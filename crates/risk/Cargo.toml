@@ -1,0 +1,11 @@
+[package]
+name    = "risk"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+domain       = { workspace = true }
+mt5-client   = { workspace = true }
+rust_decimal = { workspace = true }
+thiserror    = { workspace = true }
+tracing      = { workspace = true }
