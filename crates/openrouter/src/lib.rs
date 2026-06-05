@@ -1,1 +1,3 @@
-// Phase 4: OpenRouter (OpenAI-compatible) chat client + structured-output parsing
+mod error;
+
+pub use error::OpenRouterError;
