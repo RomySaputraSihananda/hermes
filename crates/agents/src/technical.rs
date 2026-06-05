@@ -26,7 +26,7 @@ pub(crate) fn build_messages(input: &TechnicalInput<'_>) -> Vec<Message> {
 
     let signal_json = input.analysis.signal.as_ref().map(|s| {
         serde_json::json!({
-            "side":  format!("{:?}", s.side),
+            "side":  serde_json::to_value(&s.side).unwrap_or_default(),
             "entry": s.entry.to_string(),
             "sl":    s.sl.to_string(),
             "tp":    s.tp.to_string(),
@@ -39,6 +39,7 @@ pub(crate) fn build_messages(input: &TechnicalInput<'_>) -> Vec<Message> {
         "fvgs":             input.analysis.fvgs.len(),
         "order_blocks":     input.analysis.order_blocks.len(),
         "structure_events": input.analysis.structure.len(),
+        "sweeps":           input.analysis.sweeps.len(),
         "signal":           signal_json,
     })
     .to_string();

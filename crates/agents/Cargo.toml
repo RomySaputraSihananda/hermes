@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-chrono     = { workspace = true }
 domain     = { workspace = true }
 ict        = { workspace = true }
 openrouter = { workspace = true }
@@ -13,3 +12,6 @@ serde_json = { workspace = true }
 thiserror  = { workspace = true }
 tokio      = { workspace = true }
 tracing    = { workspace = true }
+
+[dev-dependencies]
+chrono = { workspace = true }
