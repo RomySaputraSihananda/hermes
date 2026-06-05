@@ -8,3 +8,6 @@ chrono       = { workspace = true }
 chrono-tz    = { workspace = true }
 rust_decimal = { workspace = true }
 serde        = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
