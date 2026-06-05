@@ -7,10 +7,19 @@ use openrouter::{Message, OpenRouterClient, Role};
 pub struct RiskInput<'a> {
     pub account: &'a AccountInfo,
     pub positions: &'a [Position],
-    pub signal: &'a TradeSignal,
+    pub signal: Option<&'a TradeSignal>,
 }
 
 pub(crate) fn build_messages(input: &RiskInput<'_>) -> Vec<Message> {
+    let signal_json = input.signal.map(|s| {
+        serde_json::json!({
+            "side":  serde_json::to_value(s.side).unwrap_or_default(),
+            "entry": s.entry.to_string(),
+            "sl":    s.sl.to_string(),
+            "tp":    s.tp.to_string(),
+        })
+    });
+
     let user_content = serde_json::json!({
         "account": {
             "balance":     input.account.balance.to_string(),
@@ -19,12 +28,7 @@ pub(crate) fn build_messages(input: &RiskInput<'_>) -> Vec<Message> {
             "currency":    input.account.currency,
         },
         "open_positions": input.positions.len(),
-        "signal": {
-            "side":  serde_json::to_value(input.signal.side).unwrap_or_default(),
-            "entry": input.signal.entry.to_string(),
-            "sl":    input.signal.sl.to_string(),
-            "tp":    input.signal.tp.to_string(),
-        },
+        "signal": signal_json,
     })
     .to_string();
 
@@ -95,7 +99,7 @@ mod tests {
         let input = RiskInput {
             account: &account,
             positions: &[],
-            signal: &signal,
+            signal: Some(&signal),
         };
         let messages = build_messages(&input);
         assert_eq!(messages.len(), 2);
