@@ -76,7 +76,7 @@ pub enum Mt5Error {
     Parse(#[from] serde_json::Error),
 
     #[error("empty response for {endpoint}")]
-    Empty { endpoint: &'static str },
+    Empty { endpoint: String },  // real URL, not a static template
 }
 ```
 
@@ -180,7 +180,7 @@ struct DataVec<T> { data: Vec<T> }
 struct DataOne<T> { data: T }
 
 #[derive(serde::Deserialize)]
-struct ApiErrorBody { status: u16, detail: String }
+struct ApiErrorBody { detail: String }  // status code captured from HTTP response, not JSON body
 ```
 
 ---

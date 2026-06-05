@@ -74,7 +74,7 @@ impl Mt5Client {
                 ("count", &count.to_string()),
             ]))
             .await?;
-        tracing::debug!(endpoint = "/rates/from-pos", "mt5 response ok");
+        tracing::debug!(endpoint = %url, "mt5 response ok");
         let w: DataVec<Candle> = serde_json::from_str(&text)?;
         Ok(w.data)
     }
