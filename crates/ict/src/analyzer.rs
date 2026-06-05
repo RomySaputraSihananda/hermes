@@ -207,6 +207,9 @@ mod tests {
         assert!(sig.entry > Decimal::ZERO);
         assert!(sig.sl < sig.entry);
         assert!(sig.tp > sig.entry);
+        assert_eq!(sig.entry, "1.35".parse::<rust_decimal::Decimal>().unwrap(), "entry should be OB midpoint");
+        assert_eq!(sig.sl, "1.25".parse::<rust_decimal::Decimal>().unwrap(), "sl should be OB bottom");
+        assert_eq!(sig.tp, "2.0".parse::<rust_decimal::Decimal>().unwrap(), "tp should be max swing high");
     }
 
     #[test]
@@ -239,5 +242,18 @@ mod tests {
         *candles.last_mut().unwrap() = make_candle("1.3", "1.3", "1.0", "1.1");
         let analysis = IctAnalyzer::new(&candles).analyze();
         assert!(analysis.signal.is_none());
+    }
+
+    #[test]
+    fn no_ob_or_fvg_in_ote_returns_no_signal() {
+        // Mitigate the OB by inserting a candle that closes below ob.bottom=1.25
+        // Conditions 1 (BOS), 2 (Discount), 3 (OTE) still pass — but no OB/FVG overlaps OTE
+        let mut candles = full_confluence_candles();
+        let last = candles.pop().unwrap();
+        // close=1.2 < ob.bottom=1.25 → mitigates the bullish OB
+        candles.push(make_candle("1.3", "1.3", "1.1", "1.2"));
+        candles.push(last);
+        let analysis = IctAnalyzer::new(&candles).analyze();
+        assert!(analysis.signal.is_none(), "expected None when no OB/FVG overlaps OTE");
     }
 }

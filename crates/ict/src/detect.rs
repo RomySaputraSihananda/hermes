@@ -3,7 +3,6 @@ use domain::{Candle, Side};
 use crate::swing::{SwingKind, SwingPoint};
 use crate::types::{BosChoch, Fvg, LiquiditySweep, OrderBlock, Ote, PdArray, PdZone, StructureEvent};
 
-#[allow(dead_code)]
 pub(crate) fn detect_fvg(candles: &[Candle]) -> Vec<Fvg> {
     let mut result = Vec::new();
     for i in 2..candles.len() {
@@ -39,7 +38,6 @@ pub(crate) fn detect_fvg(candles: &[Candle]) -> Vec<Fvg> {
     result
 }
 
-#[allow(dead_code)]
 pub(crate) fn detect_ob(candles: &[Candle], swings: &[SwingPoint]) -> Vec<OrderBlock> {
     let mut result = Vec::new();
     for swing in swings {
@@ -89,7 +87,6 @@ pub(crate) fn detect_ob(candles: &[Candle], swings: &[SwingPoint]) -> Vec<OrderB
     result
 }
 
-#[allow(dead_code)]
 pub(crate) fn detect_structure(candles: &[Candle], swings: &[SwingPoint]) -> Vec<BosChoch> {
     if swings.is_empty() {
         return vec![];
@@ -138,7 +135,6 @@ pub(crate) fn detect_structure(candles: &[Candle], swings: &[SwingPoint]) -> Vec
     result
 }
 
-#[allow(dead_code)]
 pub(crate) fn detect_sweeps(candles: &[Candle], swings: &[SwingPoint]) -> Vec<LiquiditySweep> {
     let mut result = Vec::new();
     for candle in candles {
@@ -168,7 +164,6 @@ pub(crate) fn detect_sweeps(candles: &[Candle], swings: &[SwingPoint]) -> Vec<Li
     result
 }
 
-#[allow(dead_code)]
 pub(crate) fn compute_pd(candles: &[Candle], swings: &[SwingPoint]) -> Option<PdArray> {
     let range_high = swings
         .iter()
@@ -197,7 +192,6 @@ pub(crate) fn compute_pd(candles: &[Candle], swings: &[SwingPoint]) -> Option<Pd
     })
 }
 
-#[allow(dead_code)]
 pub(crate) fn compute_ote(swings: &[SwingPoint], bias: Side) -> Option<Ote> {
     let fib618: rust_decimal::Decimal = "0.618".parse().unwrap();
     let fib786: rust_decimal::Decimal = "0.786".parse().unwrap();

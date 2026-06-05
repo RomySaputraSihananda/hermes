@@ -2,24 +2,22 @@ use chrono::{DateTime, Utc};
 use domain::Candle;
 use rust_decimal::Decimal;
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SwingKind {
     High,
     Low,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub(crate) struct SwingPoint {
     pub(crate) index: usize,
     pub(crate) price: Decimal,
     pub(crate) kind: SwingKind,
+    #[allow(dead_code)]
     pub(crate) time: DateTime<Utc>,
 }
 
 /// N-candle pivot detection. Requires at least 2*n+1 candles.
-#[allow(dead_code)]
 pub(crate) fn detect_swings(candles: &[Candle], n: usize) -> Vec<SwingPoint> {
     if candles.len() < 2 * n + 1 {
         return vec![];
