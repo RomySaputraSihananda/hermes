@@ -44,16 +44,17 @@ pub(crate) mod naive_utc_ms {
     use chrono::{DateTime, NaiveDateTime, Utc};
     use serde::{Deserialize, Deserializer, Serializer};
 
-    const FMT: &str = "%Y-%m-%dT%H:%M:%S%.f";
+    const FMT_PARSE: &str = "%Y-%m-%dT%H:%M:%S%.f";   // accept any precision when reading
+    const FMT_EMIT: &str  = "%Y-%m-%dT%H:%M:%S%.3f";  // always write exactly .NNN
 
     pub fn deserialize<'de, D: Deserializer<'de>>(de: D) -> Result<DateTime<Utc>, D::Error> {
         let s = String::deserialize(de)?;
-        NaiveDateTime::parse_from_str(&s, FMT)
+        NaiveDateTime::parse_from_str(&s, FMT_PARSE)
             .map(|ndt| ndt.and_utc())
             .map_err(serde::de::Error::custom)
     }
 
     pub fn serialize<S: Serializer>(dt: &DateTime<Utc>, se: S) -> Result<S::Ok, S::Error> {
-        se.serialize_str(&dt.format(FMT).to_string())
+        se.serialize_str(&dt.format(FMT_EMIT).to_string())
     }
 }
