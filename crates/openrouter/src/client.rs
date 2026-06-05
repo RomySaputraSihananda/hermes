@@ -1,17 +1,83 @@
+use crate::error::OpenRouterError;
+use crate::types::{ApiErrorBody, ChatRequest, ChatResponse, JsonSchemaWrapper, Message, ResponseFormat};
+
+pub struct OpenRouterClient {
+    http: reqwest::Client,
+}
+
+#[allow(clippy::new_without_default)]
+impl OpenRouterClient {
+    pub fn new() -> Self {
+        Self {
+            http: reqwest::Client::new(),
+        }
+    }
+
+    pub async fn chat<T: serde::de::DeserializeOwned>(
+        &self,
+        model: &str,
+        messages: Vec<Message>,
+        schema: &serde_json::Value,
+    ) -> Result<T, OpenRouterError> {
+        let api_key = std::env::var("OPENROUTER_API_KEY")
+            .map_err(|_| OpenRouterError::MissingApiKey)?;
+
+        let request = ChatRequest {
+            model,
+            messages: &messages,
+            response_format: ResponseFormat {
+                r#type: "json_schema",
+                json_schema: JsonSchemaWrapper {
+                    name: "response",
+                    strict: true,
+                    schema,
+                },
+            },
+        };
+
+        let response = self
+            .http
+            .post("https://openrouter.ai/api/v1/chat/completions")
+            .bearer_auth(&api_key)
+            .json(&request)
+            .send()
+            .await
+            .map_err(OpenRouterError::Http)?;
+
+        let status = response.status();
+        if status.as_u16() >= 400 {
+            let text = response.text().await.map_err(OpenRouterError::Http)?;
+            let message = serde_json::from_str::<ApiErrorBody>(&text)
+                .map(|b| b.error.message)
+                .unwrap_or(text);
+            return Err(OpenRouterError::Api {
+                status: status.as_u16(),
+                message,
+            });
+        }
+
+        let text = response.text().await.map_err(OpenRouterError::Http)?;
+        let chat_response: ChatResponse = serde_json::from_str(&text)?;
+        let result = parse_response(chat_response)?;
+        tracing::debug!(model = %model, "openrouter response ok");
+        Ok(result)
+    }
+}
+
 fn parse_response<T: serde::de::DeserializeOwned>(
-    response: crate::types::ChatResponse,
-) -> Result<T, crate::error::OpenRouterError> {
+    response: ChatResponse,
+) -> Result<T, OpenRouterError> {
     if response.choices.is_empty() {
-        return Err(crate::error::OpenRouterError::EmptyChoices);
+        return Err(OpenRouterError::EmptyChoices);
     }
     Ok(serde_json::from_str(&response.choices[0].message.content)?)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::parse_response;
-    use crate::types::{ApiErrorBody, ChatResponse, Role};
+    use super::{parse_response, OpenRouterClient};
     use crate::error::OpenRouterError;
+    use crate::types::{ApiErrorBody, ChatResponse, Role};
 
     #[test]
     fn role_serialization() {
@@ -80,5 +146,21 @@ mod tests {
         let result: TradeVote = parse_response(response).unwrap();
         assert_eq!(result.action, "buy");
         assert!((result.confidence - 0.85).abs() < f64::EPSILON);
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn new_fails_without_api_key() {
+        let key = "OPENROUTER_API_KEY";
+        let saved = std::env::var(key).ok();
+        // SAFETY: current_thread runtime — no concurrent env access in this test
+        unsafe { std::env::remove_var(key); }
+        let client = OpenRouterClient::new();
+        let result = client
+            .chat::<serde_json::Value>("test-model", vec![], &serde_json::json!({}))
+            .await;
+        if let Some(v) = saved {
+            unsafe { std::env::set_var(key, v); }
+        }
+        assert!(matches!(result, Err(OpenRouterError::MissingApiKey)));
     }
 }
