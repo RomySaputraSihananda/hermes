@@ -1,1 +1,5 @@
-// Phase 5: agent roles, prompts, and orchestrator/quorum aggregation
+mod error;
+mod types;
+
+pub use error::AgentsError;
+pub use types::{Action, AgentDecision, AgentVote};
