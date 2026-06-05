@@ -46,11 +46,10 @@ pub(crate) fn detect_ob(candles: &[Candle], swings: &[SwingPoint]) -> Vec<OrderB
         match swing.kind {
             // SwingLow → bullish OB: last bearish candle before swing index
             SwingKind::Low => {
-                if let Some((_idx, ob_candle)) = candles[..swing.index]
+                if let Some(ob_candle) = candles[..swing.index]
                     .iter()
-                    .enumerate()
                     .rev()
-                    .find(|(_, c)| c.close < c.open)
+                    .find(|c| c.close < c.open)
                 {
                     let top = ob_candle.high;
                     let bottom = ob_candle.low;
@@ -67,11 +66,10 @@ pub(crate) fn detect_ob(candles: &[Candle], swings: &[SwingPoint]) -> Vec<OrderB
             }
             // SwingHigh → bearish OB: last bullish candle before swing index
             SwingKind::High => {
-                if let Some((_idx, ob_candle)) = candles[..swing.index]
+                if let Some(ob_candle) = candles[..swing.index]
                     .iter()
-                    .enumerate()
                     .rev()
-                    .find(|(_, c)| c.close > c.open)
+                    .find(|c| c.close > c.open)
                 {
                     let top = ob_candle.high;
                     let bottom = ob_candle.low;
@@ -217,16 +215,8 @@ pub(crate) fn compute_ote(swings: &[SwingPoint], bias: Side) -> Option<Ote> {
     let range = swing_high - swing_low;
 
     let (top, bottom) = match bias {
-        Side::Long => {
-            let top = (swing_high - fib618 * range).normalize();
-            let bottom = (swing_high - fib786 * range).normalize();
-            (top, bottom)
-        }
-        Side::Short => {
-            let top = (swing_low + fib786 * range).normalize();
-            let bottom = (swing_low + fib618 * range).normalize();
-            (top, bottom)
-        }
+        Side::Long => (swing_high - fib618 * range, swing_high - fib786 * range),
+        Side::Short => (swing_low + fib786 * range, swing_low + fib618 * range),
     };
 
     Some(Ote { top, bottom, side: bias })
@@ -406,8 +396,8 @@ mod tests {
         ];
         let ote = compute_ote(&swings, Side::Long).unwrap();
         assert_eq!(ote.side, Side::Long);
-        assert_eq!(ote.top.to_string(), "1.382");
-        assert_eq!(ote.bottom.to_string(), "1.214");
+        assert_eq!(ote.top, "1.382".parse::<rust_decimal::Decimal>().unwrap());
+        assert_eq!(ote.bottom, "1.214".parse::<rust_decimal::Decimal>().unwrap());
     }
 
     #[test]
@@ -418,7 +408,7 @@ mod tests {
         ];
         let ote = compute_ote(&swings, Side::Short).unwrap();
         assert_eq!(ote.side, Side::Short);
-        assert_eq!(ote.top.to_string(), "1.786");
-        assert_eq!(ote.bottom.to_string(), "1.618");
+        assert_eq!(ote.top, "1.786".parse::<rust_decimal::Decimal>().unwrap());
+        assert_eq!(ote.bottom, "1.618".parse::<rust_decimal::Decimal>().unwrap());
     }
 }
