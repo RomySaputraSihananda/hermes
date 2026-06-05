@@ -44,15 +44,15 @@ pub struct OrderCheckResult {
 
 #[derive(Deserialize)]
 pub(crate) struct DataVec<T> {
-    pub data: Vec<T>,
+    pub(crate) data: Vec<T>,
 }
 
 #[derive(Deserialize)]
 pub(crate) struct DataOne<T> {
-    pub data: T,
+    pub(crate) data: T,
 }
 
 #[derive(Deserialize)]
 pub(crate) struct ApiErrorBody {
-    pub detail: String,
+    pub(crate) detail: String,
 }
