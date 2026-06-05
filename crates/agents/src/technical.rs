@@ -26,7 +26,7 @@ pub(crate) fn build_messages(input: &TechnicalInput<'_>) -> Vec<Message> {
 
     let signal_json = input.analysis.signal.as_ref().map(|s| {
         serde_json::json!({
-            "side":  serde_json::to_value(&s.side).unwrap_or_default(),
+            "side":  serde_json::to_value(s.side).unwrap_or_default(),
             "entry": s.entry.to_string(),
             "sl":    s.sl.to_string(),
             "tp":    s.tp.to_string(),

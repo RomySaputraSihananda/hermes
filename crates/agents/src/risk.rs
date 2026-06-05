@@ -20,7 +20,7 @@ pub(crate) fn build_messages(input: &RiskInput<'_>) -> Vec<Message> {
         },
         "open_positions": input.positions.len(),
         "signal": {
-            "side":  serde_json::to_value(&input.signal.side).unwrap_or_default(),
+            "side":  serde_json::to_value(input.signal.side).unwrap_or_default(),
             "entry": input.signal.entry.to_string(),
             "sl":    input.signal.sl.to_string(),
             "tp":    input.signal.tp.to_string(),
