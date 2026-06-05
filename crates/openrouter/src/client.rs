@@ -1,11 +1,11 @@
 use crate::error::OpenRouterError;
 use crate::types::{ApiErrorBody, ChatRequest, ChatResponse, JsonSchemaWrapper, Message, ResponseFormat};
 
+#[derive(Default)]
 pub struct OpenRouterClient {
     http: reqwest::Client,
 }
 
-#[allow(clippy::new_without_default)]
 impl OpenRouterClient {
     pub fn new() -> Self {
         Self {
