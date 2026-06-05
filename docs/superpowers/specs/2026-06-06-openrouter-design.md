@@ -48,13 +48,12 @@ crates/openrouter/src/
 
 ```rust
 pub struct OpenRouterClient {
-    api_key: String,
     http: reqwest::Client,
 }
 
 impl OpenRouterClient {
-    /// Baca OPENROUTER_API_KEY dari environment. Error jika tidak ada.
-    pub fn new() -> Result<Self, OpenRouterError>;
+    /// Buat client baru. OPENROUTER_API_KEY dibaca saat chat() dipanggil.
+    pub fn new() -> Self;
 
     pub async fn chat<T: serde::de::DeserializeOwned>(
         &self,

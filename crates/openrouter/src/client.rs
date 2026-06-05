@@ -41,12 +41,11 @@ impl OpenRouterClient {
             .bearer_auth(&api_key)
             .json(&request)
             .send()
-            .await
-            .map_err(OpenRouterError::Http)?;
+            .await?;
 
         let status = response.status();
         if status.as_u16() >= 400 {
-            let text = response.text().await.map_err(OpenRouterError::Http)?;
+            let text = response.text().await?;
             let message = serde_json::from_str::<ApiErrorBody>(&text)
                 .map(|b| b.error.message)
                 .unwrap_or(text);
@@ -56,7 +55,7 @@ impl OpenRouterClient {
             });
         }
 
-        let text = response.text().await.map_err(OpenRouterError::Http)?;
+        let text = response.text().await?;
         let chat_response: ChatResponse = serde_json::from_str(&text)?;
         let result = parse_response(chat_response)?;
         tracing::debug!(model = %model, "openrouter response ok");
