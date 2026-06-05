@@ -39,7 +39,7 @@ impl Mt5Client {
         let text = self.fetch_text(self.http.get(&url)).await?;
         tracing::debug!(endpoint = %url, "mt5 response ok");
         let w: DataVec<AccountInfo> = serde_json::from_str(&text)?;
-        w.data.into_iter().next().ok_or(Mt5Error::Empty { endpoint: "/account" })
+        w.data.into_iter().next().ok_or(Mt5Error::Empty { endpoint: url })
     }
 
     pub async fn symbol(&self, name: &str) -> Result<Symbol, Mt5Error> {
@@ -47,7 +47,7 @@ impl Mt5Client {
         let text = self.fetch_text(self.http.get(&url)).await?;
         tracing::debug!(endpoint = %url, "mt5 response ok");
         let w: DataVec<Symbol> = serde_json::from_str(&text)?;
-        w.data.into_iter().next().ok_or(Mt5Error::Empty { endpoint: "/symbols/{symbol}" })
+        w.data.into_iter().next().ok_or(Mt5Error::Empty { endpoint: url })
     }
 
     pub async fn tick(&self, symbol: &str) -> Result<Tick, Mt5Error> {
@@ -55,7 +55,7 @@ impl Mt5Client {
         let text = self.fetch_text(self.http.get(&url)).await?;
         tracing::debug!(endpoint = %url, "mt5 response ok");
         let w: DataVec<Tick> = serde_json::from_str(&text)?;
-        w.data.into_iter().next().ok_or(Mt5Error::Empty { endpoint: "/symbols/{symbol}/tick" })
+        w.data.into_iter().next().ok_or(Mt5Error::Empty { endpoint: url })
     }
 
     pub async fn rates_from_pos(
@@ -160,6 +160,14 @@ mod tests {
         let w: DataOne<OrderCheckResult> = serde_json::from_str(raw).unwrap();
         assert_eq!(w.data.retcode, 0);
         assert_eq!(w.data.comment, "Done");
+    }
+
+    #[test]
+    fn account_empty_data_is_error() {
+        use crate::error::Mt5Error;
+        let w: DataVec<AccountInfo> = serde_json::from_str(r#"{"data":[],"count":0,"format":"json"}"#).unwrap();
+        let result = w.data.into_iter().next().ok_or(Mt5Error::Empty { endpoint: "/account".to_string() });
+        assert!(matches!(result, Err(Mt5Error::Empty { .. })));
     }
 
     #[test]

@@ -10,5 +10,5 @@ pub enum Mt5Error {
     Parse(#[from] serde_json::Error),
 
     #[error("empty response for {endpoint}")]
-    Empty { endpoint: &'static str },
+    Empty { endpoint: String },
 }
