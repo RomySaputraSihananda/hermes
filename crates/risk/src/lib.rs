@@ -1,5 +1,5 @@
 mod types;
-
+use rust_decimal::Decimal;
 pub use types::{RiskConfig, RiskDecision};
 
 pub fn evaluate(
@@ -7,8 +7,6 @@ pub fn evaluate(
     signal: &ict::TradeSignal,
     config: &RiskConfig,
 ) -> RiskDecision {
-    use rust_decimal::Decimal;
-
     let sl_distance = (signal.entry - signal.sl).abs();
 
     if sl_distance == Decimal::ZERO {
@@ -35,6 +33,8 @@ pub fn evaluate(
 
     let volume = volume.min(config.max_volume);
 
+    // NOTE: Only checks margin is non-zero. Actual margin required for `volume`
+    // lots is not computed here — the broker will reject on entry if insufficient.
     if account.margin_free <= Decimal::ZERO {
         return RiskDecision {
             volume: Decimal::ZERO,
@@ -163,5 +163,20 @@ mod tests {
         assert!(!d.approved);
         assert_eq!(d.volume, Decimal::ZERO);
         assert!(d.reason.as_deref().unwrap_or("").contains("margin"));
+    }
+
+    #[test]
+    fn volume_clamped_to_max() {
+        // balance=500000, risk_pct=1% → risk_amount=5000
+        // sl_distance=0.0050, value_per_lot=10000
+        // raw_volume = 5000 / (0.005 * 10000) = 100.0 > max_volume=10.0
+        // → clamped to 10.0, approved=true (NOT rejected)
+        let account = make_account("500000", "500000");
+        let signal  = make_signal("1.1000", "1.0950"); // sl_distance = 0.0050
+        let config  = make_config(); // max_volume = 10.0
+        let d = evaluate(&account, &signal, &config);
+        assert!(d.approved);
+        assert_eq!(d.volume, "10.0".parse::<Decimal>().unwrap());
+        assert!(d.reason.is_none());
     }
 }
