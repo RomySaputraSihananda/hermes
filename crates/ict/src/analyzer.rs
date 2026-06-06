@@ -279,5 +279,9 @@ mod tests {
         let candles = full_confluence_candles();
         let analysis = IctAnalyzer::new(&candles, "0.05".parse().unwrap()).analyze();
         assert!(analysis.signal.is_some());
+        let sig = analysis.signal.unwrap();
+        assert_eq!(sig.side, Side::Long);
+        assert_eq!(sig.entry, "1.35".parse::<Decimal>().unwrap());
+        assert_eq!(sig.sl, "1.25".parse::<Decimal>().unwrap());
     }
 }
