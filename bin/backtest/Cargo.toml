@@ -1,0 +1,18 @@
+[package]
+name    = "backtest"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+agents             = { workspace = true }
+anyhow             = { workspace = true }
+domain             = { workspace = true }
+dotenvy            = { workspace = true }
+ict                = { workspace = true }
+mt5-client         = { workspace = true }
+openrouter         = { workspace = true }
+risk               = { workspace = true }
+rust_decimal       = { workspace = true }
+tokio              = { workspace = true }
+tracing            = { workspace = true }
+tracing-subscriber = { workspace = true }
