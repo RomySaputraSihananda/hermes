@@ -4,9 +4,10 @@ use rust_decimal::Decimal;
 
 #[derive(Debug, Clone)]
 pub struct EngineConfig {
-    pub timeframe:    domain::Timeframe,
-    pub candle_count: u32,
-    pub risk_pct:     Decimal,
+    pub timeframe:       domain::Timeframe,
+    pub candle_count:    u32,
+    pub risk_pct:        Decimal,
+    pub min_sl_distance: Decimal,
 }
 
 #[derive(Debug)]
@@ -90,7 +91,7 @@ pub async fn run_once(
             }
         };
 
-        let analysis = ict::IctAnalyzer::new(&candles).analyze();
+        let analysis = ict::IctAnalyzer::new(&candles, config.min_sl_distance).analyze();
         let signal = match &analysis.signal {
             Some(s) => s.clone(),
             None    => continue,

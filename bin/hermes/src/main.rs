@@ -28,6 +28,10 @@ async fn main() -> anyhow::Result<()> {
         .context("RISK_PCT missing")?
         .parse::<Decimal>()
         .context("RISK_PCT must be a decimal (e.g. 0.01)")?;
+    let min_sl_distance = std::env::var("MIN_SL_DISTANCE")
+        .unwrap_or_else(|_| "0".to_string())
+        .parse::<Decimal>()
+        .context("MIN_SL_DISTANCE must be a decimal (e.g. 0.0010)")?;
     let cycle_secs    = std::env::var("CYCLE_SECS")
         .context("CYCLE_SECS missing")?
         .parse::<u64>()
@@ -49,7 +53,7 @@ async fn main() -> anyhow::Result<()> {
 
     let mt5    = mt5_client::Mt5Client::new(mt5_base_url);
     let llm    = openrouter::OpenRouterClient::new();
-    let config = EngineConfig { timeframe, candle_count, risk_pct };
+    let config = EngineConfig { timeframe, candle_count, risk_pct, min_sl_distance };
 
     tracing::info!(
         symbols    = ?symbols,

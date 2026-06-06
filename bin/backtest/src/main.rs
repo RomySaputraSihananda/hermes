@@ -62,6 +62,9 @@ async fn main() -> anyhow::Result<()> {
         .context("CANDLE_COUNT missing")?
         .parse::<usize>()
         .context("CANDLE_COUNT must be a positive integer")?;
+    if window_size == 0 {
+        anyhow::bail!("CANDLE_COUNT must be at least 1");
+    }
     let risk_pct         = std::env::var("RISK_PCT")
         .context("RISK_PCT missing")?
         .parse::<Decimal>()
@@ -74,6 +77,10 @@ async fn main() -> anyhow::Result<()> {
         .context("BACKTEST_BALANCE missing")?
         .parse::<Decimal>()
         .context("BACKTEST_BALANCE must be a decimal (e.g. 5000)")?;
+    let min_sl_distance = std::env::var("MIN_SL_DISTANCE")
+        .unwrap_or_else(|_| "0".to_string())
+        .parse::<Decimal>()
+        .context("MIN_SL_DISTANCE must be a decimal (e.g. 0.0010)")?;
 
     let timeframe = timeframe_str
         .parse::<domain::Timeframe>()
@@ -178,7 +185,7 @@ async fn main() -> anyhow::Result<()> {
 
         // --- no open trade: run pipeline ---
         let window   = &candles[i..new_idx];
-        let analysis = IctAnalyzer::new(window).analyze();
+        let analysis = IctAnalyzer::new(window, min_sl_distance).analyze();
         let signal   = match analysis.signal.as_ref() {
             Some(s) => s.clone(),
             None    => continue,
