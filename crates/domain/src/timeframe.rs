@@ -53,6 +53,37 @@ impl Timeframe {
     }
 }
 
+impl std::str::FromStr for Timeframe {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "M1"  => Ok(Self::M1),
+            "M2"  => Ok(Self::M2),
+            "M3"  => Ok(Self::M3),
+            "M4"  => Ok(Self::M4),
+            "M5"  => Ok(Self::M5),
+            "M6"  => Ok(Self::M6),
+            "M10" => Ok(Self::M10),
+            "M12" => Ok(Self::M12),
+            "M15" => Ok(Self::M15),
+            "M20" => Ok(Self::M20),
+            "M30" => Ok(Self::M30),
+            "H1"  => Ok(Self::H1),
+            "H2"  => Ok(Self::H2),
+            "H3"  => Ok(Self::H3),
+            "H4"  => Ok(Self::H4),
+            "H6"  => Ok(Self::H6),
+            "H8"  => Ok(Self::H8),
+            "H12" => Ok(Self::H12),
+            "D1"  => Ok(Self::D1),
+            "W1"  => Ok(Self::W1),
+            "MN1" => Ok(Self::Mn1),
+            other => Err(format!("unknown timeframe: {other}")),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -72,5 +103,17 @@ mod tests {
         assert_eq!(json, r#""TIMEFRAME_H1""#);
         let back: Timeframe = serde_json::from_str(&json).unwrap();
         assert_eq!(back, tf);
+    }
+
+    #[test]
+    fn from_str_known_variant() {
+        let tf: Timeframe = "M15".parse().unwrap();
+        assert_eq!(tf, Timeframe::M15);
+    }
+
+    #[test]
+    fn from_str_unknown_returns_err() {
+        let result = "invalid".parse::<Timeframe>();
+        assert!(result.is_err());
     }
 }
