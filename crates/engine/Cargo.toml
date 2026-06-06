@@ -4,11 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-agents     = { workspace = true }
-domain     = { workspace = true }
-ict        = { workspace = true }
-mt5-client = { workspace = true }
-risk       = { workspace = true }
-thiserror  = { workspace = true }
-tokio      = { workspace = true }
-tracing    = { workspace = true }
+agents       = { workspace = true }
+domain       = { workspace = true }
+ict          = { workspace = true }
+mt5-client   = { workspace = true }
+openrouter   = { workspace = true }
+risk         = { workspace = true }
+rust_decimal = { workspace = true }
+thiserror    = { workspace = true }
+tokio        = { workspace = true }
+tracing      = { workspace = true }
