@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 pub(crate) fn build_trade_request(
     symbol: &str,
     signal: &ict::TradeSignal,
@@ -56,6 +57,10 @@ mod tests {
         let signal = make_signal(Side::Short, "1.1000", "1.1050", "1.0900");
         let req = build_trade_request("EURUSD", &signal, "0.05".parse().unwrap());
         assert_eq!(req.action, 1);
-        assert_eq!(req.order_type, 1);    // ORDER_TYPE_SELL
+        assert_eq!(req.order_type, 1);                              // ORDER_TYPE_SELL
+        assert!((req.price  - 1.1000_f64).abs() < 1e-6);
+        assert!((req.volume - 0.05_f64  ).abs() < 1e-6);
+        assert!((req.sl.unwrap() - 1.1050_f64).abs() < 1e-6);     // SL above entry (sell)
+        assert!((req.tp.unwrap() - 1.0900_f64).abs() < 1e-6);     // TP below entry (sell)
     }
 }
