@@ -199,7 +199,10 @@ async fn main() -> anyhow::Result<()> {
         let fundamental_in = agents::FundamentalInput { symbol: &symbol, news_context: "" };
         let risk_in        = agents::RiskInput        { account: &account_sim, positions: &[], signal: Some(&signal) };
 
-        let decision = agents::run_agents(&llm, &llm_model, technical_in, sentiment_in, fundamental_in, risk_in).await?;
+        let decision = match agents::run_agents(&llm, &llm_model, technical_in, sentiment_in, fundamental_in, risk_in).await {
+            Ok(d)  => d,
+            Err(e) => { tracing::warn!(error = %e, "agents call failed, skipping signal"); continue; }
+        };
 
         if decision.action == agents::Action::Hold {
             continue;
