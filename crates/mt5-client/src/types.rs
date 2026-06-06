@@ -40,6 +40,13 @@ pub struct OrderCheckResult {
     pub comment: String,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct TradeResult {
+    pub retcode: u32,
+    pub order: u64,
+    pub comment: String,
+}
+
 // ── internal types (crate-visible only) ───────────────────────────────────────
 
 #[derive(Deserialize)]

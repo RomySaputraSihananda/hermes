@@ -100,6 +100,23 @@ impl Mt5Client {
         let w: DataOne<OrderCheckResult> = serde_json::from_str(&text)?;
         Ok(w.data)
     }
+
+    pub async fn place_order(
+        &self,
+        request: &TradeRequest,
+    ) -> Result<crate::types::TradeResult, Mt5Error> {
+        #[derive(serde::Serialize)]
+        struct Body<'a> {
+            request: &'a TradeRequest,
+        }
+        let url = format!("{}/order/send", self.base_url);
+        let text = self
+            .fetch_text(self.http.post(&url).json(&Body { request }))
+            .await?;
+        tracing::debug!(endpoint = %url, "mt5 response ok");
+        let w: DataOne<crate::types::TradeResult> = serde_json::from_str(&text)?;
+        Ok(w.data)
+    }
 }
 
 #[cfg(test)]
@@ -188,5 +205,15 @@ mod tests {
         assert!(json.contains(r#""action":1"#));
         assert!(!json.contains(r#""sl""#), "None fields must be omitted");
         assert!(!json.contains(r#""magic""#), "None fields must be omitted");
+    }
+
+    #[test]
+    fn parse_trade_result() {
+        use crate::types::TradeResult;
+        let raw = r#"{"data":{"retcode":10009,"order":123456789,"comment":"Request executed"},"count":1,"format":"json"}"#;
+        let w: DataOne<TradeResult> = serde_json::from_str(raw).unwrap();
+        assert_eq!(w.data.retcode, 10009);
+        assert_eq!(w.data.order, 123456789);
+        assert_eq!(w.data.comment, "Request executed");
     }
 }
