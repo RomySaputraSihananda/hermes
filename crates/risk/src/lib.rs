@@ -3,9 +3,9 @@ mod types;
 pub use types::{RiskConfig, RiskDecision};
 
 pub fn evaluate(
-    _account: &domain::AccountInfo,
-    _signal: &ict::TradeSignal,
-    _config: &RiskConfig,
+    account: &domain::AccountInfo,
+    signal: &ict::TradeSignal,
+    config: &RiskConfig,
 ) -> RiskDecision {
     todo!()
 }
