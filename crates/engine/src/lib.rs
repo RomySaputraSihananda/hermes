@@ -35,7 +35,6 @@ pub enum EngineError {
 }
 
 #[derive(Clone)]
-#[allow(dead_code)]
 struct Candidate {
     symbol:   String,
     signal:   ict::TradeSignal,
@@ -43,7 +42,6 @@ struct Candidate {
     volume:   Decimal,
 }
 
-#[allow(dead_code)]
 fn risk_config_from_symbol(
     symbol: &domain::Symbol,
     risk_pct: Decimal,
@@ -57,7 +55,6 @@ fn risk_config_from_symbol(
     }
 }
 
-#[allow(dead_code)]
 fn select_winner(candidates: Vec<Candidate>) -> Option<Candidate> {
     candidates.into_iter().max_by(|a, b| {
         a.decision.confidence
@@ -67,13 +64,103 @@ fn select_winner(candidates: Vec<Candidate>) -> Option<Candidate> {
 }
 
 pub async fn run_once(
-    _symbols: &[&str],
-    _mt5:     &mt5_client::Mt5Client,
-    _llm:     &openrouter::OpenRouterClient,
-    _model:   &str,
-    _config:  &EngineConfig,
+    symbols: &[&str],
+    mt5:     &mt5_client::Mt5Client,
+    llm:     &openrouter::OpenRouterClient,
+    model:   &str,
+    config:  &EngineConfig,
 ) -> Result<EngineOutcome, EngineError> {
-    todo!()
+    // Tahap 1: fetch account + positions in parallel
+    let (account, positions) = tokio::try_join!(mt5.account(), mt5.positions())?;
+
+    let mut candidates: Vec<Candidate> = Vec::new();
+    let mut had_signals  = false;
+    let mut had_buy_sell = false;
+
+    // Tahap 2: per-symbol fetch + analyze (sequential — clients are not Clone)
+    for &sym in symbols {
+        let (symbol_info, candles) = match tokio::try_join!(
+            mt5.symbol(sym),
+            mt5.rates_from_pos(sym, config.timeframe, 0, config.candle_count),
+        ) {
+            Ok(pair) => pair,
+            Err(e) => {
+                tracing::warn!(symbol = sym, error = %e, "fetch failed, skipping");
+                continue;
+            }
+        };
+
+        let analysis = ict::IctAnalyzer::new(&candles).analyze();
+        let signal = match &analysis.signal {
+            Some(s) => s.clone(),
+            None    => continue,
+        };
+        had_signals = true;
+
+        let technical_in   = agents::TechnicalInput   { symbol: sym, candles: &candles, analysis: &analysis };
+        let sentiment_in   = agents::SentimentInput   { symbol: sym, candles: &candles };
+        let fundamental_in = agents::FundamentalInput { symbol: sym, news_context: "" };
+        let risk_in        = agents::RiskInput        { account: &account, positions: &positions, signal: Some(&signal) };
+
+        let decision = agents::run_agents(llm, model, technical_in, sentiment_in, fundamental_in, risk_in).await?;
+
+        if decision.action == agents::Action::Hold {
+            continue;
+        }
+        had_buy_sell = true;
+
+        let risk_cfg = risk_config_from_symbol(&symbol_info, config.risk_pct);
+        let risk_dec = risk::evaluate(&account, &signal, &risk_cfg);
+        if !risk_dec.approved {
+            tracing::debug!(symbol = sym, reason = ?risk_dec.reason, "risk rejected");
+            continue;
+        }
+
+        candidates.push(Candidate { symbol: sym.to_string(), signal, decision, volume: risk_dec.volume });
+    }
+
+    // Tahap 3: pick winner
+    let winner = match select_winner(candidates) {
+        Some(w) => w,
+        None => {
+            return Ok(if !had_signals {
+                EngineOutcome::NoSignal
+            } else if !had_buy_sell {
+                EngineOutcome::Hold
+            } else {
+                EngineOutcome::NoApproval
+            });
+        }
+    };
+
+    // Tahap 4: execute
+    let request = execute::build_trade_request(&winner.symbol, &winner.signal, winner.volume);
+
+    // Pre-flight check — log only, do not abort
+    match mt5.order_check(&request).await {
+        Ok(chk) => tracing::debug!(retcode = chk.retcode, comment = %chk.comment, "order_check"),
+        Err(e)  => tracing::warn!(error = %e, "order_check failed, proceeding"),
+    }
+
+    let result = mt5.place_order(&request).await?;
+    if result.retcode != 10009 {
+        return Err(EngineError::OrderRejected { retcode: result.retcode, comment: result.comment });
+    }
+
+    tracing::info!(
+        symbol = %winner.symbol,
+        action = ?winner.decision.action,
+        volume = %winner.volume,
+        order  = result.order,
+        "trade executed"
+    );
+
+    Ok(EngineOutcome::Traded {
+        symbol: winner.symbol,
+        action: winner.decision.action,
+        volume: winner.volume,
+        order:  result.order,
+    })
 }
 
 #[cfg(test)]
