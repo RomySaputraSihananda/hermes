@@ -35,6 +35,7 @@ pub enum EngineError {
 }
 
 #[derive(Clone)]
+#[allow(dead_code)]
 struct Candidate {
     symbol:   String,
     signal:   ict::TradeSignal,
@@ -42,6 +43,7 @@ struct Candidate {
     volume:   Decimal,
 }
 
+#[allow(dead_code)]
 fn risk_config_from_symbol(
     symbol: &domain::Symbol,
     risk_pct: Decimal,
@@ -55,6 +57,7 @@ fn risk_config_from_symbol(
     }
 }
 
+#[allow(dead_code)]
 fn select_winner(candidates: Vec<Candidate>) -> Option<Candidate> {
     candidates.into_iter().max_by(|a, b| {
         a.decision.confidence
@@ -64,11 +67,11 @@ fn select_winner(candidates: Vec<Candidate>) -> Option<Candidate> {
 }
 
 pub async fn run_once(
-    symbols: &[&str],
-    mt5:     &mt5_client::Mt5Client,
-    llm:     &openrouter::OpenRouterClient,
-    model:   &str,
-    config:  &EngineConfig,
+    _symbols: &[&str],
+    _mt5:     &mt5_client::Mt5Client,
+    _llm:     &openrouter::OpenRouterClient,
+    _model:   &str,
+    _config:  &EngineConfig,
 ) -> Result<EngineOutcome, EngineError> {
     todo!()
 }
