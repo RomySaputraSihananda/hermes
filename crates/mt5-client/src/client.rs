@@ -1,7 +1,7 @@
 use domain::{AccountInfo, Candle, Position, Symbol, Tick, Timeframe};
 
 use crate::error::Mt5Error;
-use crate::types::{ApiErrorBody, DataOne, DataVec, HealthStatus, OrderCheckResult, TradeRequest};
+use crate::types::{ApiErrorBody, DataOne, DataVec, HealthStatus, OrderCheckResult, TradeRequest, TradeResult};
 
 pub struct Mt5Client {
     base_url: String,
@@ -104,7 +104,7 @@ impl Mt5Client {
     pub async fn place_order(
         &self,
         request: &TradeRequest,
-    ) -> Result<crate::types::TradeResult, Mt5Error> {
+    ) -> Result<TradeResult, Mt5Error> {
         #[derive(serde::Serialize)]
         struct Body<'a> {
             request: &'a TradeRequest,
@@ -114,14 +114,14 @@ impl Mt5Client {
             .fetch_text(self.http.post(&url).json(&Body { request }))
             .await?;
         tracing::debug!(endpoint = %url, "mt5 response ok");
-        let w: DataOne<crate::types::TradeResult> = serde_json::from_str(&text)?;
+        let w: DataOne<TradeResult> = serde_json::from_str(&text)?;
         Ok(w.data)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{DataOne, DataVec, HealthStatus, OrderCheckResult, TradeRequest};
+    use crate::types::{DataOne, DataVec, HealthStatus, OrderCheckResult, TradeRequest, TradeResult};
     use domain::{AccountInfo, Candle, Position, Symbol, Tick};
 
     #[test]
@@ -209,7 +209,6 @@ mod tests {
 
     #[test]
     fn parse_trade_result() {
-        use crate::types::TradeResult;
         let raw = r#"{"data":{"retcode":10009,"order":123456789,"comment":"Request executed"},"count":1,"format":"json"}"#;
         let w: DataOne<TradeResult> = serde_json::from_str(raw).unwrap();
         assert_eq!(w.data.retcode, 10009);
