@@ -1,4 +1,3 @@
-#[allow(dead_code)]
 pub(crate) fn build_trade_request(
     symbol: &str,
     signal: &ict::TradeSignal,
