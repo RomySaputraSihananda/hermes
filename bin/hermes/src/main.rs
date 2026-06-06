@@ -66,7 +66,7 @@ async fn main() -> anyhow::Result<()> {
 
         match engine::run_once(&symbol_refs, &mt5, &llm, &llm_model, &config).await {
             Ok(EngineOutcome::Traded { symbol, action, volume, order }) => {
-                tracing::info!(symbol, ?action, %volume, order, "trade executed");
+                tracing::debug!(symbol, ?action, %volume, order, "trade confirmed");
             }
             Ok(EngineOutcome::NoSignal)   => tracing::debug!("no ICT signal on any symbol"),
             Ok(EngineOutcome::Hold)       => tracing::debug!("agents voted hold on all symbols"),
