@@ -2,6 +2,7 @@ mod execute;
 
 use rust_decimal::Decimal;
 
+#[derive(Debug, Clone)]
 pub struct EngineConfig {
     pub timeframe:    domain::Timeframe,
     pub candle_count: u32,
