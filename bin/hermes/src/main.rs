@@ -16,6 +16,7 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let mt5_base_url  = std::env::var("MT5_BASE_URL").context("MT5_BASE_URL missing")?;
+    std::env::var("OPENROUTER_API_KEY").context("OPENROUTER_API_KEY missing")?;
     let llm_model     = std::env::var("LLM_MODEL").context("LLM_MODEL missing")?;
     let symbols_raw   = std::env::var("SYMBOLS").context("SYMBOLS missing")?;
     let timeframe_str = std::env::var("TIMEFRAME").context("TIMEFRAME missing")?;
