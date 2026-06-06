@@ -53,7 +53,6 @@ pub fn evaluate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rust_decimal::Decimal;
 
     fn make_account(balance: &str, margin_free: &str) -> domain::AccountInfo {
         domain::AccountInfo {
