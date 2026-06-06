@@ -32,6 +32,9 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|_| "0".to_string())
         .parse::<Decimal>()
         .context("MIN_SL_DISTANCE must be a decimal (e.g. 0.0010)")?;
+    if min_sl_distance < Decimal::ZERO {
+        anyhow::bail!("MIN_SL_DISTANCE must be >= 0, got {min_sl_distance}");
+    }
     let cycle_secs    = std::env::var("CYCLE_SECS")
         .context("CYCLE_SECS missing")?
         .parse::<u64>()
@@ -60,6 +63,7 @@ async fn main() -> anyhow::Result<()> {
         timeframe  = ?config.timeframe,
         candle_count = config.candle_count,
         risk_pct   = %config.risk_pct,
+        min_sl_distance = %config.min_sl_distance,
         cycle_secs,
         "hermes starting"
     );

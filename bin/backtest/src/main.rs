@@ -81,6 +81,9 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|_| "0".to_string())
         .parse::<Decimal>()
         .context("MIN_SL_DISTANCE must be a decimal (e.g. 0.0010)")?;
+    if min_sl_distance < Decimal::ZERO {
+        anyhow::bail!("MIN_SL_DISTANCE must be >= 0, got {min_sl_distance}");
+    }
 
     let timeframe = timeframe_str
         .parse::<domain::Timeframe>()
@@ -113,7 +116,7 @@ async fn main() -> anyhow::Result<()> {
         volume_step:   symbol_info.volume_step,
     };
 
-    tracing::info!(total, window_size, "starting walk-forward");
+    tracing::info!(total, window_size, min_sl_distance = %min_sl_distance, "starting walk-forward");
 
     let mut balance      = backtest_balance;
     let mut account_sim  = make_sim_account(balance);
