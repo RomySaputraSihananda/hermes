@@ -6,7 +6,8 @@ use crate::swing::{SwingKind, SwingPoint, detect_swings};
 use crate::types::{BosChoch, ConfluenceFlags, Fvg, LiquiditySweep, OrderBlock, Ote, PdArray, PdZone, TradeSignal};
 
 pub struct IctAnalyzer<'a> {
-    candles: &'a [Candle],
+    candles:         &'a [Candle],
+    min_sl_distance: Decimal,
 }
 
 pub struct IctAnalysis {
@@ -20,8 +21,8 @@ pub struct IctAnalysis {
 }
 
 impl<'a> IctAnalyzer<'a> {
-    pub fn new(candles: &'a [Candle]) -> Self {
-        Self { candles }
+    pub fn new(candles: &'a [Candle], min_sl_distance: Decimal) -> Self {
+        Self { candles, min_sl_distance }
     }
 
     pub fn analyze(&self) -> IctAnalysis {
@@ -37,15 +38,15 @@ impl<'a> IctAnalyzer<'a> {
             };
         }
 
-        let swings = detect_swings(self.candles, 2);
-        let fvgs = detect_fvg(self.candles);
+        let swings       = detect_swings(self.candles, 2);
+        let fvgs         = detect_fvg(self.candles);
         let order_blocks = detect_ob(self.candles, &swings);
-        let structure = detect_structure(self.candles, &swings);
-        let sweeps = detect_sweeps(self.candles, &swings);
-        let pd_array = compute_pd(self.candles, &swings);
-        let bias = structure.last().map(|s| s.side);
-        let ote = bias.and_then(|b| compute_ote(&swings, b));
-        let signal = check_confluence(
+        let structure    = detect_structure(self.candles, &swings);
+        let sweeps       = detect_sweeps(self.candles, &swings);
+        let pd_array     = compute_pd(self.candles, &swings);
+        let bias         = structure.last().map(|s| s.side);
+        let ote          = bias.and_then(|b| compute_ote(&swings, b));
+        let signal       = check_confluence(
             self.candles,
             &fvgs,
             &order_blocks,
@@ -55,6 +56,11 @@ impl<'a> IctAnalyzer<'a> {
             &ote,
             &swings,
         );
+
+        let signal = signal.filter(|s| {
+            self.min_sl_distance == Decimal::ZERO
+                || (s.entry - s.sl).abs() >= self.min_sl_distance
+        });
 
         IctAnalysis {
             fvgs,
@@ -200,7 +206,7 @@ mod tests {
     #[test]
     fn full_confluence_generates_signal() {
         let candles = full_confluence_candles();
-        let analysis = IctAnalyzer::new(&candles).analyze();
+        let analysis = IctAnalyzer::new(&candles, Decimal::ZERO).analyze();
         assert!(analysis.signal.is_some(), "expected a TradeSignal but got None");
         let sig = analysis.signal.unwrap();
         assert_eq!(sig.side, Side::Long);
@@ -222,7 +228,7 @@ mod tests {
             make_candle("1.0", "1.1", "0.9", "1.0"),
             make_candle("1.0", "1.1", "0.9", "1.0"),
         ];
-        let analysis = IctAnalyzer::new(&candles).analyze();
+        let analysis = IctAnalyzer::new(&candles, Decimal::ZERO).analyze();
         assert!(analysis.signal.is_none());
     }
 
@@ -231,7 +237,7 @@ mod tests {
         // Replace last candle with close=1.8 → Premium (> equilibrium=1.5), bias=Long needs Discount
         let mut candles = full_confluence_candles();
         *candles.last_mut().unwrap() = make_candle("1.9", "2.0", "1.7", "1.8");
-        let analysis = IctAnalyzer::new(&candles).analyze();
+        let analysis = IctAnalyzer::new(&candles, Decimal::ZERO).analyze();
         assert!(analysis.signal.is_none());
     }
 
@@ -240,7 +246,7 @@ mod tests {
         // Replace last candle with close=1.1 → Discount but below OTE bottom (1.214)
         let mut candles = full_confluence_candles();
         *candles.last_mut().unwrap() = make_candle("1.3", "1.3", "1.0", "1.1");
-        let analysis = IctAnalyzer::new(&candles).analyze();
+        let analysis = IctAnalyzer::new(&candles, Decimal::ZERO).analyze();
         assert!(analysis.signal.is_none());
     }
 
@@ -253,7 +259,25 @@ mod tests {
         // close=1.2 < ob.bottom=1.25 → mitigates the bullish OB
         candles.push(make_candle("1.3", "1.3", "1.1", "1.2"));
         candles.push(last);
-        let analysis = IctAnalyzer::new(&candles).analyze();
+        let analysis = IctAnalyzer::new(&candles, Decimal::ZERO).analyze();
         assert!(analysis.signal.is_none(), "expected None when no OB/FVG overlaps OTE");
+    }
+
+    #[test]
+    fn sl_too_close_filtered_out() {
+        // entry=1.35, sl=1.25 → distance=0.10
+        // min_sl_distance=0.5 > 0.10 → signal dibuang
+        let candles = full_confluence_candles();
+        let analysis = IctAnalyzer::new(&candles, "0.5".parse().unwrap()).analyze();
+        assert!(analysis.signal.is_none());
+    }
+
+    #[test]
+    fn sl_wide_enough_passes() {
+        // entry=1.35, sl=1.25 → distance=0.10
+        // min_sl_distance=0.05 < 0.10 → signal lolos
+        let candles = full_confluence_candles();
+        let analysis = IctAnalyzer::new(&candles, "0.05".parse().unwrap()).analyze();
+        assert!(analysis.signal.is_some());
     }
 }
