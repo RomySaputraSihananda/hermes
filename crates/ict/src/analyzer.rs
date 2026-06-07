@@ -115,25 +115,29 @@ fn check_confluence(
         .iter()
         .rfind(|f| !f.mitigated && f.side == bias && f.top > ote.bottom && f.bottom < ote.top);
 
-    let (entry_top, entry_bottom, sl) = if let Some(ob) = overlapping_ob {
-        let sl = match bias {
-            Side::Long => ob.bottom,
-            Side::Short => ob.top,
-        };
-        (ob.top, ob.bottom, sl)
+    let (entry_top, entry_bottom) = if let Some(ob) = overlapping_ob {
+        (ob.top, ob.bottom)
     } else if let Some(fvg) = overlapping_fvg {
-        let sl = match bias {
-            Side::Long => fvg.bottom,
-            Side::Short => fvg.top,
-        };
-        (fvg.top, fvg.bottom, sl)
+        (fvg.top, fvg.bottom)
     } else {
         return None;
     };
 
-    // Generate TradeSignal
-    let two = Decimal::from(2u32);
+    let two   = Decimal::from(2u32);
     let entry = (entry_top + entry_bottom) / two;
+
+    let sl = match bias {
+        Side::Long => swings
+            .iter()
+            .filter(|s| s.kind == SwingKind::Low && s.price < entry)
+            .map(|s| s.price)
+            .max()?,
+        Side::Short => swings
+            .iter()
+            .filter(|s| s.kind == SwingKind::High && s.price > entry)
+            .map(|s| s.price)
+            .min()?,
+    };
 
     let tp = match bias {
         Side::Long => swings
@@ -214,7 +218,7 @@ mod tests {
         assert!(sig.sl < sig.entry);
         assert!(sig.tp > sig.entry);
         assert_eq!(sig.entry, "1.35".parse::<rust_decimal::Decimal>().unwrap(), "entry should be OB midpoint");
-        assert_eq!(sig.sl, "1.25".parse::<rust_decimal::Decimal>().unwrap(), "sl should be OB bottom");
+        assert_eq!(sig.sl, "1.0".parse::<rust_decimal::Decimal>().unwrap(), "sl should be nearest swing low below entry");
         assert_eq!(sig.tp, "2.0".parse::<rust_decimal::Decimal>().unwrap(), "tp should be max swing high");
     }
 
@@ -265,8 +269,8 @@ mod tests {
 
     #[test]
     fn sl_too_close_filtered_out() {
-        // entry=1.35, sl=1.25 → distance=0.10
-        // min_sl_distance=0.5 > 0.10 → signal dibuang
+        // entry=1.35, sl=1.0 → distance=0.35
+        // min_sl_distance=0.5 > 0.35 → signal dibuang
         let candles = full_confluence_candles();
         let analysis = IctAnalyzer::new(&candles, "0.5".parse().unwrap()).analyze();
         assert!(analysis.signal.is_none());
@@ -274,14 +278,14 @@ mod tests {
 
     #[test]
     fn sl_wide_enough_passes() {
-        // entry=1.35, sl=1.25 → distance=0.10
-        // min_sl_distance=0.05 < 0.10 → signal lolos
+        // entry=1.35, sl=1.0 → distance=0.35
+        // min_sl_distance=0.05 < 0.35 → signal lolos
         let candles = full_confluence_candles();
         let analysis = IctAnalyzer::new(&candles, "0.05".parse().unwrap()).analyze();
         assert!(analysis.signal.is_some());
         let sig = analysis.signal.unwrap();
         assert_eq!(sig.side, Side::Long);
         assert_eq!(sig.entry, "1.35".parse::<Decimal>().unwrap());
-        assert_eq!(sig.sl, "1.25".parse::<Decimal>().unwrap());
+        assert_eq!(sig.sl, "1.0".parse::<Decimal>().unwrap());
     }
 }
