@@ -123,7 +123,7 @@ fn check_confluence(
         return None;
     };
 
-    let two   = Decimal::from(2u32);
+    let two = Decimal::from(2u32);
     let entry = (entry_top + entry_bottom) / two;
 
     let sl = match bias {
@@ -138,6 +138,11 @@ fn check_confluence(
             .map(|s| s.price)
             .min()?,
     };
+
+    debug_assert!(
+        match bias { Side::Long => sl < entry, Side::Short => sl > entry },
+        "SL must be on the protective side of entry"
+    );
 
     let tp = match bias {
         Side::Long => swings
@@ -287,5 +292,19 @@ mod tests {
         assert_eq!(sig.side, Side::Long);
         assert_eq!(sig.entry, "1.35".parse::<Decimal>().unwrap());
         assert_eq!(sig.sl, "1.0".parse::<Decimal>().unwrap());
+    }
+
+    #[test]
+    fn sl_is_on_correct_side_of_entry() {
+        // Long: sl < entry. This is already asserted by full_confluence_generates_signal.
+        // Verify the invariant holds for the Long case explicitly.
+        let candles = full_confluence_candles();
+        let analysis = IctAnalyzer::new(&candles, Decimal::ZERO).analyze();
+        if let Some(sig) = analysis.signal {
+            match sig.side {
+                Side::Long  => assert!(sig.sl < sig.entry, "Long SL must be below entry"),
+                Side::Short => assert!(sig.sl > sig.entry, "Short SL must be above entry"),
+            }
+        }
     }
 }
