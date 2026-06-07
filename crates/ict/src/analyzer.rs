@@ -127,24 +127,16 @@ fn check_confluence(
     let entry = (entry_top + entry_bottom) / two;
 
     let sl = match bias {
-        Side::Long => swings
-            .iter()
-            .filter(|s| s.kind == SwingKind::Low && s.price < entry)
-            .map(|s| s.price)
-            .max()?,
-        Side::Short => swings
-            .iter()
-            .filter(|s| s.kind == SwingKind::High && s.price > entry)
-            .map(|s| s.price)
-            .min()?,
+        Side::Long  => pd.range_low,
+        Side::Short => pd.range_high,
     };
-
-    // The filter predicates (price < entry for Long, price > entry for Short) already
-    // guarantee this invariant by construction; the assert documents it for readers.
-    debug_assert!(
-        match bias { Side::Long => sl < entry, Side::Short => sl > entry },
-        "SL must be on the protective side of entry"
-    );
+    let valid_sl = match bias {
+        Side::Long  => sl < entry,
+        Side::Short => sl > entry,
+    };
+    if !valid_sl {
+        return None;
+    }
 
     let tp = match bias {
         Side::Long => swings
@@ -214,6 +206,42 @@ mod tests {
         ]
     }
 
+    fn two_swing_lows_candles() -> Vec<Candle> {
+        // Two swing lows below entry=1.35 with only ONE OB overlapping OTE:
+        //   swing low A at 1.00 → pd.range_low  (OB before it: candle[1] top=1.45, bottom=1.25 → overlaps OTE [1.214,1.382])
+        //   swing low B at 1.22 → nearest below entry (OB before it: high=1.90, bottom=1.70 → does NOT overlap OTE)
+        //
+        // detect_swings(period=2) on 15 candles, n=2, loop i=2..12:
+        //   [2].low=1.00: left lows [0]=1.40,[1]=1.25 both > 1.00 ✓; right lows [3]=1.20,[4]=1.24 both > 1.00 ✓
+        //   [9].high=2.00: left highs [7]=1.50,[8]=1.80 both < 2.00 ✓; right highs [10]=1.95,[11]=1.95 both < 2.00 ✓
+        //   [12].low=1.22: left lows [10]=1.80,[11]=1.90 both > 1.22 ✓; right lows [13]=1.28,[14]=1.26 both > 1.22 ✓
+        //
+        // ICT confluence: BOS Long at some candle close > 2.00,
+        //   OTE=[1.214,1.382] (range=[1.00,2.00]), last_close=1.30 ∈ OTE,
+        //   Only OB from swing_low_A overlaps OTE: entry=1.35 (midpoint of 1.45/1.25)
+        //   OB from swing_low_B: top=1.90, bottom=1.70 → bottom=1.70 > ote.top=1.382 → no overlap
+        vec![
+            make_candle("1.5",  "1.60", "1.40", "1.40"),  // [0]  low=1.40
+            make_candle("1.40", "1.45", "1.25", "1.30"),  // [1]  bearish OB-A: top=1.45, bottom=1.25 → overlaps OTE
+            make_candle("1.30", "1.32", "1.00", "1.25"),  // [2]  swing_low=1.00 (pd.range_low)
+            make_candle("1.25", "1.30", "1.20", "1.28"),  // [3]  low=1.20
+            make_candle("1.28", "1.35", "1.24", "1.32"),  // [4]  low=1.24
+            make_candle("1.32", "1.40", "1.28", "1.38"),  // [5]  low=1.28
+            make_candle("1.38", "1.50", "1.35", "1.45"),  // [6]  low=1.35
+            make_candle("1.45", "1.50", "1.42", "1.48"),  // [7]  low=1.42 (high < 2.00)
+            make_candle("1.48", "1.80", "1.50", "1.75"),  // [8]  high=1.80
+            make_candle("1.75", "2.00", "1.75", "1.90"),  // [9]  swing_high=2.00
+            make_candle("1.90", "1.95", "1.80", "1.85"),  // [10] bearish OB-B: top=1.95,bottom=1.80 (>ote.top=1.382)
+            make_candle("1.85", "1.95", "1.90", "1.92"),  // [11] low=1.90
+            make_candle("1.92", "1.95", "1.22", "1.25"),  // [12] swing_low=1.22 (nearest below 1.35)
+            make_candle("1.25", "1.35", "1.28", "1.32"),  // [13] low=1.28
+            make_candle("1.32", "1.40", "1.26", "1.35"),  // [14] low=1.26
+            make_candle("1.35", "1.45", "1.32", "1.42"),  // [15] BOS-Long candidate: close > 2.00? No...
+            make_candle("1.42", "2.10", "1.40", "2.05"),  // [16] BOS Long: close=2.05 > swing_high=2.00
+            make_candle("2.05", "2.10", "0.95", "1.30"),  // [17] sweep + Discount + OTE close=1.30
+        ]
+    }
+
     #[test]
     fn full_confluence_generates_signal() {
         let candles = full_confluence_candles();
@@ -225,7 +253,7 @@ mod tests {
         assert!(sig.sl < sig.entry);
         assert!(sig.tp > sig.entry);
         assert_eq!(sig.entry, "1.35".parse::<rust_decimal::Decimal>().unwrap(), "entry should be OB midpoint");
-        assert_eq!(sig.sl, "1.0".parse::<rust_decimal::Decimal>().unwrap(), "sl should be nearest swing low below entry");
+        assert_eq!(sig.sl, "1.0".parse::<rust_decimal::Decimal>().unwrap(), "sl should be pd.range_low");
         assert_eq!(sig.tp, "2.0".parse::<rust_decimal::Decimal>().unwrap(), "tp should be max swing high");
     }
 
@@ -276,7 +304,7 @@ mod tests {
 
     #[test]
     fn sl_too_close_filtered_out() {
-        // entry=1.35, sl=1.0 → distance=0.35
+        // entry=1.35, sl=pd.range_low=1.0 → distance=0.35
         // min_sl_distance=0.5 > 0.35 → signal dibuang
         let candles = full_confluence_candles();
         let analysis = IctAnalyzer::new(&candles, "0.5".parse().unwrap()).analyze();
@@ -285,7 +313,7 @@ mod tests {
 
     #[test]
     fn sl_wide_enough_passes() {
-        // entry=1.35, sl=1.0 → distance=0.35
+        // entry=1.35, sl=pd.range_low=1.0 → distance=0.35
         // min_sl_distance=0.05 < 0.35 → signal lolos
         let candles = full_confluence_candles();
         let analysis = IctAnalyzer::new(&candles, "0.05".parse().unwrap()).analyze();
@@ -306,5 +334,20 @@ mod tests {
             Side::Long  => assert!(sig.sl < sig.entry, "Long SL must be below entry"),
             Side::Short => assert!(sig.sl > sig.entry, "Short SL must be above entry"),
         }
+    }
+
+    #[test]
+    fn sl_uses_pd_range_low_not_nearest_swing() {
+        // two_swing_lows_candles has two swing lows below entry=1.35:
+        //   1.00 (pd.range_low) and 1.22 (nearest swing low)
+        // Phase 12: sl must be pd.range_low=1.00, not nearest=1.22
+        let candles = two_swing_lows_candles();
+        let analysis = IctAnalyzer::new(&candles, Decimal::ZERO).analyze();
+        let sig = analysis.signal.expect("two_swing_lows_candles should produce a signal");
+        assert_eq!(
+            sig.sl,
+            "1.0".parse::<Decimal>().unwrap(),
+            "sl should be pd.range_low (1.0), not nearest swing low (1.22)"
+        );
     }
 }
