@@ -139,6 +139,8 @@ fn check_confluence(
             .min()?,
     };
 
+    // The filter predicates (price < entry for Long, price > entry for Short) already
+    // guarantee this invariant by construction; the assert documents it for readers.
     debug_assert!(
         match bias { Side::Long => sl < entry, Side::Short => sl > entry },
         "SL must be on the protective side of entry"
@@ -296,15 +298,13 @@ mod tests {
 
     #[test]
     fn sl_is_on_correct_side_of_entry() {
-        // Long: sl < entry. This is already asserted by full_confluence_generates_signal.
-        // Verify the invariant holds for the Long case explicitly.
+        // Long case only — Short fixture not yet available
         let candles = full_confluence_candles();
         let analysis = IctAnalyzer::new(&candles, Decimal::ZERO).analyze();
-        if let Some(sig) = analysis.signal {
-            match sig.side {
-                Side::Long  => assert!(sig.sl < sig.entry, "Long SL must be below entry"),
-                Side::Short => assert!(sig.sl > sig.entry, "Short SL must be above entry"),
-            }
+        let sig = analysis.signal.expect("full_confluence_candles should produce a signal");
+        match sig.side {
+            Side::Long  => assert!(sig.sl < sig.entry, "Long SL must be below entry"),
+            Side::Short => assert!(sig.sl > sig.entry, "Short SL must be above entry"),
         }
     }
 }
