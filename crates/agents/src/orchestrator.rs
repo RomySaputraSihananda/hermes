@@ -15,7 +15,9 @@ pub(crate) fn build_orchestrator_messages(votes: &[AgentVote; 4]) -> Vec<Message
         Message {
             role: Role::System,
             content: "You are a trading orchestrator. Given votes from 4 agents \
-                      (technical, sentiment, fundamental, risk), return the best action."
+                      (technical, sentiment, fundamental, risk), return the best action. \
+                      Respond ONLY with a raw JSON object, no markdown, no explanation: \
+                      {\"action\":\"buy|sell|hold\",\"confidence\":0.0-1.0,\"reasoning\":\"...\"}."
                 .to_string(),
         },
         Message {

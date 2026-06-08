@@ -56,6 +56,7 @@ impl OpenRouterClient {
         }
 
         let text = response.text().await?;
+        tracing::debug!(model = %model, raw = %text, "openrouter raw response");
         let chat_response: ChatResponse = serde_json::from_str(&text)?;
         let result = parse_response(chat_response)?;
         tracing::debug!(model = %model, "openrouter response ok");

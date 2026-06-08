@@ -33,7 +33,9 @@ pub(crate) fn build_messages(input: &SentimentInput<'_>) -> Vec<Message> {
         Message {
             role: Role::System,
             content: "You are a market sentiment analyst. \
-                      Infer market sentiment from recent price action for the given symbol."
+                      Infer market sentiment from recent price action for the given symbol. \
+                      Respond ONLY with a raw JSON object, no markdown, no explanation: \
+                      {\"action\":\"buy|sell|hold\",\"confidence\":0.0-1.0,\"reasoning\":\"...\"}."
                 .to_string(),
         },
         Message {

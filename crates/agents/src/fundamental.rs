@@ -19,7 +19,9 @@ pub(crate) fn build_messages(input: &FundamentalInput<'_>) -> Vec<Message> {
             role: Role::System,
             content: "You are a fundamental analyst for FX/crypto markets. \
                       Given the symbol and any available news context, \
-                      vote on the fundamental outlook."
+                      vote on the fundamental outlook. \
+                      Respond ONLY with a raw JSON object, no markdown, no explanation: \
+                      {\"action\":\"buy|sell|hold\",\"confidence\":0.0-1.0,\"reasoning\":\"...\"}."
                 .to_string(),
         },
         Message {

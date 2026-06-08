@@ -48,7 +48,9 @@ pub(crate) fn build_messages(input: &TechnicalInput<'_>) -> Vec<Message> {
         Message {
             role: Role::System,
             content: "You are a technical analyst for FX/crypto trading. \
-                      Analyze the given ICT data and price action, then vote Buy, Sell, or Hold."
+                      Analyze the given ICT data and price action. \
+                      Respond ONLY with a raw JSON object, no markdown, no explanation: \
+                      {\"action\":\"buy|sell|hold\",\"confidence\":0.0-1.0,\"reasoning\":\"...\"}."
                 .to_string(),
         },
         Message {

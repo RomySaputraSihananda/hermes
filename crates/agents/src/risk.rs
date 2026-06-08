@@ -37,7 +37,9 @@ pub(crate) fn build_messages(input: &RiskInput<'_>) -> Vec<Message> {
             role: Role::System,
             content: "You are a risk manager for a trading bot. \
                       Given account info, open positions, and a proposed trade signal, \
-                      assess whether the trade is safe to execute."
+                      assess whether the trade is safe to execute. \
+                      Respond ONLY with a raw JSON object, no markdown, no explanation: \
+                      {\"action\":\"buy|sell|hold\",\"confidence\":0.0-1.0,\"reasoning\":\"...\"}."
                 .to_string(),
         },
         Message {
