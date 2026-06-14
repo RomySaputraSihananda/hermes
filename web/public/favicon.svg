@@ -1,0 +1,8 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="32" height="32" rx="8" fill="#141516"/>
+  <!-- Caduceus-inspired H shape with wings -->
+  <path d="M 10 26 L 10 10 L 16 6 L 22 10 L 22 26" stroke="#d4a843" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <line x1="10" y1="18" x2="22" y2="18" stroke="#d4a843" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M 7 10 Q 10 7 13 10" stroke="#d4a843" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+  <path d="M 25 10 Q 22 7 19 10" stroke="#d4a843" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+</svg>

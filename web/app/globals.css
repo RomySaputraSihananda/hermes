@@ -1,0 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --c-canvas:     #010102;
+  --c-s1:         #0f1011;
+  --c-s2:         #141516;
+  --c-s3:         #18191a;
+  --c-hl:         #23252a;
+  --c-hl-strong:  #34343a;
+  --c-ink:        #f7f8f8;
+  --c-ink-md:     #d0d6e0;
+  --c-ink-sub:    #8a8f98;
+  --c-ink-ter:    #62666d;
+  --c-accent:     #d4a843;
+  --c-accent-hov: #f0c060;
+  --c-bull:       #27a644;
+  --c-bear:       #e5484d;
+}
+
+html, body {
+  background-color: var(--c-canvas) !important;
+  color: var(--c-ink);
+  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-image:
+    radial-gradient(ellipse 70% 40% at 50% -5%, rgba(212,168,67,0.08) 0%, transparent 70%),
+    radial-gradient(circle, rgba(255,255,255,0.045) 1px, transparent 1px);
+  background-size: auto, 28px 28px;
+  background-attachment: fixed;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(ellipse 100% 100% at 50% 50%, transparent 60%, var(--c-canvas) 100%);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 8px;
+  border-radius: 8px; background: var(--c-accent); color: #000;
+  font-size: 14px; font-weight: 600; padding: 8px 14px;
+  transition: background 150ms; border: none; cursor: pointer; text-decoration: none;
+}
+.btn-primary:hover  { background: var(--c-accent-hov); }
+.btn-primary:active { background: var(--c-accent-hov); }
+
+.btn-secondary {
+  display: inline-flex; align-items: center; gap: 8px;
+  border-radius: 8px; background: var(--c-s1); color: var(--c-ink);
+  font-size: 14px; font-weight: 500; padding: 8px 14px;
+  border: 1px solid var(--c-hl); transition: background 150ms; cursor: pointer; text-decoration: none;
+}
+.btn-secondary:hover { background: var(--c-s2); }
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--c-s1);
+  border-radius: 12px;
+  border: 1px solid var(--c-hl);
+  padding: 24px;
+}
+.card-featured {
+  background: var(--c-s2);
+  border-radius: 12px;
+  border: 1px solid var(--c-hl-strong);
+  padding: 24px;
+}
+
+/* ── Stat tile ───────────────────────────────────────────────────────────── */
+.stat-tile {
+  background: var(--c-s1);
+  border-radius: 12px;
+  border: 1px solid var(--c-hl);
+  padding: 20px;
+}
+
+/* ── Status pills ────────────────────────────────────────────────────────── */
+.status-pill {
+  display: inline-flex; align-items: center;
+  border-radius: 9999px; padding: 2px 8px;
+  font-size: 12px; font-weight: 500;
+}
+.status-bull  { background: rgba(39,166,68,.12);  color: var(--c-bull); }
+.status-bear  { background: rgba(229,72,77,.12);  color: var(--c-bear); }
+.status-muted { background: var(--c-s2);          color: var(--c-ink-md); }
+.status-gold  { background: rgba(212,168,67,.15); color: var(--c-accent); }
+
+/* ── Eyebrow label ───────────────────────────────────────────────────────── */
+.eyebrow {
+  font-size: 13px; font-weight: 500;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--c-ink-sub);
+}
+
+/* ── Data table ──────────────────────────────────────────────────────────── */
+.data-table { width: 100%; font-size: 14px; }
+.data-table thead tr {
+  border-bottom: 1px solid var(--c-hl);
+  background: var(--c-s1);
+  text-align: left;
+}
+.data-table thead th {
+  padding: 12px 16px;
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--c-ink-sub); white-space: nowrap;
+}
+.data-table tbody tr {
+  border-bottom: 1px solid var(--c-hl);
+  transition: background 100ms;
+}
+.data-table tbody tr:last-child { border-bottom: none; }
+.data-table tbody tr:hover { background: var(--c-s2); }
+.data-table tbody td { padding: 12px 16px; }
+
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--c-s1); }
+::-webkit-scrollbar-thumb { background: var(--c-hl); border-radius: 4px; }
+
+/* ── Pulse animation ─────────────────────────────────────────────────────── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+.pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }

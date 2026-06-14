@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hermes — ICT Algorithmic Trading System</title>
+  <style>
+    :root {
+      --bg:       #0d1117;
+      --bg2:      #161b22;
+      --bg3:      #21262d;
+      --border:   #30363d;
+      --text:     #e6edf3;
+      --muted:    #8b949e;
+      --accent:   #58a6ff;
+      --green:    #3fb950;
+      --red:      #f85149;
+      --gold:     #d29922;
+      --purple:   #bc8cff;
+      --radius:   8px;
+      --mono:     'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(13,17,23,0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      padding: 0.75rem 2rem;
+    }
+
+    .nav-brand {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.03em;
+    }
+
+    .nav-brand span { color: var(--gold); }
+
+    nav ul {
+      display: flex;
+      gap: 1.5rem;
+      list-style: none;
+      margin-left: auto;
+    }
+
+    nav ul a { color: var(--muted); font-size: 0.9rem; }
+    nav ul a:hover { color: var(--text); text-decoration: none; }
+
+    /* ── Layout ── */
+    .container { max-width: 1000px; margin: 0 auto; padding: 0 2rem; }
+
+    section { padding: 4rem 0; border-bottom: 1px solid var(--border); }
+    section:last-of-type { border-bottom: none; }
+
+    h1 { font-size: 2.8rem; font-weight: 800; line-height: 1.2; }
+    h2 { font-size: 1.6rem; font-weight: 700; margin-bottom: 1.25rem; color: var(--text); }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--accent); }
+    p  { color: var(--muted); margin-bottom: 0.9rem; }
+
+    /* ── Hero ── */
+    #hero {
+      padding: 5rem 0 3.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(88,166,255,0.1);
+      color: var(--accent);
+      border: 1px solid rgba(88,166,255,0.3);
+      border-radius: 20px;
+      padding: 0.2rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    .hero-sub {
+      font-size: 1.1rem;
+      color: var(--muted);
+      max-width: 640px;
+      margin: 1rem 0 2rem;
+    }
+
+    .btn-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1.2rem;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.15s;
+    }
+
+    .btn:hover { opacity: 0.85; text-decoration: none; }
+
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-top: 3rem;
+    }
+
+    .stat {
+      background: var(--bg2);
+      padding: 1.25rem 1.5rem;
+      text-align: center;
+    }
+
+    .stat-val {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--green);
+      font-family: var(--mono);
+    }
+
+    .stat-val.red  { color: var(--red); }
+    .stat-val.gold { color: var(--gold); }
+    .stat-val.blue { color: var(--accent); }
+
+    .stat-lbl {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 0.25rem;
+    }
+
+    /* ── Code block ── */
+    pre {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      font-family: var(--mono);
+      font-size: 0.83rem;
+      line-height: 1.6;
+      overflow-x: auto;
+      color: var(--text);
+      margin: 1rem 0;
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.85em;
+      background: var(--bg3);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+      color: var(--accent);
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    .comment { color: var(--muted); }
+    .key     { color: var(--purple); }
+    .val     { color: var(--green); }
+    .val-warn { color: var(--gold); }
+
+    /* ── Card grid ── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+    }
+
+    .card-icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .card h3 {
+      margin-bottom: 0.4rem;
+      color: var(--text);
+    }
+
+    .card p { font-size: 0.875rem; color: var(--muted); margin: 0; }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    th {
+      text-align: left;
+      padding: 0.6rem 1rem;
+      background: var(--bg3);
+      color: var(--muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    td code { font-size: 0.8rem; }
+
+    .tag {
+      display: inline-block;
+      padding: 0.1rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .tag-green  { background: rgba(63,185,80,0.15);  color: var(--green); }
+    .tag-red    { background: rgba(248,81,73,0.15);  color: var(--red); }
+    .tag-blue   { background: rgba(88,166,255,0.15); color: var(--accent); }
+    .tag-gold   { background: rgba(210,153,34,0.15); color: var(--gold); }
+    .tag-purple { background: rgba(188,140,255,0.15); color: var(--purple); }
+
+    /* ── Signal cascade ── */
+    .cascade {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin: 1.25rem 0;
+    }
+
+    .cascade-step {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.75rem 1.25rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .cascade-step .label { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 0.15rem; }
+    .cascade-step .name  { color: var(--accent); }
+
+    .cascade-arrow { color: var(--muted); font-size: 1.2rem; }
+
+    /* ── Arch tree ── */
+    .arch-tree {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      line-height: 1.8;
+    }
+
+    .dir  { color: var(--accent); }
+    .file { color: var(--text); }
+    .desc { color: var(--muted); }
+
+    /* ── Config groups ── */
+    .config-group {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+      overflow: hidden;
+    }
+
+    .config-group-header {
+      background: var(--bg3);
+      padding: 0.6rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Results table highlight ── */
+    .highlight-row td { background: rgba(63,185,80,0.06); font-weight: 600; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 2.5rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-brand">&#9889; <span>Hermes</span></div>
+  <ul>
+    <li><a href="#strategy">Strategy</a></li>
+    <li><a href="#config">Config</a></li>
+    <li><a href="#results">Results</a></li>
+    <li><a href="#setup">Setup</a></li>
+    <li><a href="https://github.com/romysaputrasihananda/hermes" target="_blank">GitHub</a></li>
+  </ul>
+</nav>
+
+<!-- Hero -->
+<section id="hero">
+  <div class="container">
+    <div class="badge">ICT Algo Trading</div>
+    <h1>Hermes</h1>
+    <p class="hero-sub">
+      A Rust-based algorithmic trading engine implementing the Inner Circle Trader (ICT) methodology —
+      multi-path signal detection, walk-forward backtesting, and live MT5 order execution.
+    </p>
+    <div class="btn-row">
+      <a class="btn btn-primary" href="#setup">Get Started</a>
+      <a class="btn btn-secondary" href="#results">Backtest Results</a>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat">
+        <div class="stat-val">3.90</div>
+        <div class="stat-lbl">Profit Factor</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">54.1%</div>
+        <div class="stat-lbl">Win Rate</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val gold">+209%</div>
+        <div class="stat-lbl">Return (XAU M15)</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val red">-$476</div>
+        <div class="stat-lbl">Max Drawdown</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val blue">148</div>
+        <div class="stat-lbl">Trades (50k bars)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Architecture -->
+<section id="architecture">
+  <div class="container">
+    <h2>Architecture</h2>
+    <p>Hermes is a Cargo workspace with a clean layered design. Each crate has a single responsibility.</p>
+
+    <div class="arch-tree">
+      <div><span class="dir">hermes/</span></div>
+      <div>&nbsp;&nbsp;<span class="dir">bin/</span></div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">hermes/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="desc"># Live trading engine — reads MT5, places orders</span></div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">backtest/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="desc"># Walk-forward backtester with PnL reporting</span></div>
+      <div>&nbsp;&nbsp;<span class="dir">crates/</span></div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">domain/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="desc"># Core types: Candle, Side, Symbol, AccountInfo</span></div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">ict/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="desc"># ICT signal detection: BOS/CHoCH, OTE, OB, FVG, PD arrays</span></div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">risk/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="desc"># Position sizing: fixed fractional</span></div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">mt5-client/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="desc"># HTTP client for the MT5 bridge API</span></div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">engine/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="desc"># Orchestrates ICT analysis → risk → order execution</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- Strategy -->
+<section id="strategy">
+  <div class="container">
+    <h2>ICT Strategy</h2>
+    <p>
+      Hermes implements a confluence-based ICT entry model on M15 candles.
+      Each cycle analyzes a rolling window of candles for BOS/CHoCH + PD array alignment,
+      then tries three signal paths in priority order.
+    </p>
+
+    <h3>Signal Cascade (priority order)</h3>
+    <div class="cascade">
+      <div class="cascade-step">
+        <span class="label">Primary</span>
+        <span class="name">OTE Entry</span>
+      </div>
+      <span class="cascade-arrow">→ or →</span>
+      <div class="cascade-step">
+        <span class="label">Fallback</span>
+        <span class="name">FVG Entry</span>
+      </div>
+      <span class="cascade-arrow">→ or →</span>
+      <div class="cascade-step">
+        <span class="label">Fallback</span>
+        <span class="name">OB Entry</span>
+      </div>
+    </div>
+    <p>All three paths require: <strong>BOS/CHoCH confirmed</strong> + <strong>H1 EMA trend aligned</strong> + <strong>H4 EMA trend aligned</strong> (if enabled). The first path that finds a valid signal wins.</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">&#128200;</div>
+        <h3>BOS / CHoCH</h3>
+        <p>Break of Structure or Change of Character confirms directional bias before any entry is considered.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#127919;</div>
+        <h3>OTE (Primary)</h3>
+        <p>Optimal Trade Entry — price retraces into the 61.8–78.6% Fibonacci zone of the most recent impulse swing.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#9633;</div>
+        <h3>FVG (Fallback A)</h3>
+        <p>Fair Value Gap — last close inside the most recent unmitigated imbalance zone after a BOS.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#9650;</div>
+        <h3>Order Block (Fallback B)</h3>
+        <p>Last opposite candle before an impulse move. Price re-entering the OB range triggers entry.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#128293;</div>
+        <h3>PD Array</h3>
+        <p>Premium / Discount zones. SL placed at PD range_low (Long) or range_high (Short) for tight risk.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#128062;</div>
+        <h3>Liquidity Sweep</h3>
+        <p>Sweep of swing highs/lows signals engineered liquidity collection — tracked as an optional confluence flag.</p>
+      </div>
+    </div>
+
+    <h3>Trade Management</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Default</th>
+            <th>Effect</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>PARTIAL_TP_1R</code></td>
+            <td><span class="tag tag-green">true</span></td>
+            <td>Close 50% at 1R, remainder runs to TP. Boosts win rate significantly.</td>
+          </tr>
+          <tr>
+            <td><code>PARTIAL_TP_2R</code></td>
+            <td><span class="tag tag-green">true</span></td>
+            <td>Close 25% of original volume at 2R level.</td>
+          </tr>
+          <tr>
+            <td><code>BREAKEVEN_SL_1R</code></td>
+            <td><span class="tag tag-red">false</span></td>
+            <td>Move SL to entry after price hits 1R. Protects capital, reduces PF slightly.</td>
+          </tr>
+          <tr>
+            <td><code>TRAILING_2R</code></td>
+            <td><span class="tag tag-red">false</span></td>
+            <td>Move SL to 1R level when price hits 2R. Parameter sweep found this hurts PF.</td>
+          </tr>
+          <tr>
+            <td><code>FRIDAY_CLOSE_HOUR</code></td>
+            <td><code>21</code></td>
+            <td>Force-close all open trades on Friday at or after this hour (UTC). Avoids weekend gap.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Configuration -->
+<section id="config">
+  <div class="container">
+    <h2>Configuration Reference</h2>
+    <p>All settings are provided via environment variables or a <code>.env</code> file in the project root.</p>
+
+    <div class="config-group">
+      <div class="config-group-header">Connection</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>MT5_BASE_URL</code></td><td><em>required</em></td><td>URL of the MT5 bridge (e.g. <code>https://mt5.example.com</code>)</td></tr>
+            <tr><td><code>SYMBOLS</code></td><td><em>required (live)</em></td><td>Comma-separated symbols for live trading (e.g. <code>XAUUSDm,GBPUSDm</code>)</td></tr>
+            <tr><td><code>SYMBOL</code></td><td><em>required (backtest)</em></td><td>Single symbol for backtesting</td></tr>
+            <tr><td><code>TIMEFRAME</code></td><td><em>required</em></td><td>Candle timeframe: <code>M5</code>, <code>M15</code>, <code>H1</code>, <code>H4</code>, etc.</td></tr>
+            <tr><td><code>CANDLE_COUNT</code></td><td><em>required</em></td><td>Rolling analysis window size in candles (200 recommended for M15)</td></tr>
+            <tr><td><code>CYCLE_SECS</code></td><td><code>60</code></td><td>Live loop interval in seconds</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="config-group">
+      <div class="config-group-header">Risk &amp; Sizing</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>RISK_PCT</code></td><td><code>0.01</code></td><td>Risk per trade as decimal (<code>0.01</code> = 1%). Use <code>0.025</code> for 2.5%.</td></tr>
+            <tr><td><code>BACKTEST_BALANCE</code></td><td><code>5000</code></td><td>Starting balance in USD for backtesting</td></tr>
+            <tr><td><code>BACKTEST_CANDLES</code></td><td><code>50000</code></td><td>Number of historical candles to fetch for backtest</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="config-group">
+      <div class="config-group-header">Friction (Backtesting accuracy)</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>COMMISSION_PER_LOT</code></td><td><code>7.0</code></td><td>Round-trip commission in USD per lot (Exness Zero = <code>7.0</code>)</td></tr>
+            <tr><td><code>SLIPPAGE_POINTS</code></td><td><code>2</code></td><td>Extra SL slippage in MT5 points (conservative worst-case)</td></tr>
+            <tr><td><code>SPREAD_OVERRIDE</code></td><td><code>0</code></td><td>Override spread in price units. Set <code>0</code> for Zero/Raw account (commission model)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="config-group">
+      <div class="config-group-header">ICT Signal Filters</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>SWING_PERIOD</code></td><td><code>2</code></td><td>Swing detection sensitivity — candle must beat N neighbors each side</td></tr>
+            <tr><td><code>MIN_RR</code></td><td><code>2.5</code></td><td>Minimum reward:risk ratio. Rejects trades below this threshold (<code>0</code> = disabled)</td></tr>
+            <tr><td><code>KILLZONE_WINDOWS</code></td><td><code>08:00-13:00,15:00-18:00</code></td><td>Comma-separated HH:MM-HH:MM windows in broker server time (NY+London)</td></tr>
+            <tr><td><code>DOW_FILTER</code></td><td><code>true</code></td><td>Skip signals on Monday and Friday (reduces noise on illiquid days)</td></tr>
+            <tr><td><code>ATR_MIN_PRICE</code></td><td><code>0</code></td><td>Skip signals when ATR(14) is below this value (<code>0</code> = disabled)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="config-group">
+      <div class="config-group-header">Trend Filter (EMA)</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>TREND_EMA_PERIOD</code></td><td><code>20</code></td><td>EMA period on <code>TREND_TF</code> for bias alignment (<code>0</code> = disabled)</td></tr>
+            <tr><td><code>TREND_TF</code></td><td><code>H1</code></td><td>Timeframe for primary EMA filter: <code>H1</code> (uses existing candles) or <code>H4</code></td></tr>
+            <tr><td><code>TREND_H4_CONFIRM</code></td><td><code>true</code></td><td>Require H4 EMA direction to agree with H1 EMA. Strong filter — recommended <code>true</code>.</td></tr>
+            <tr><td><code>TREND_H4_PERIOD</code></td><td><code>20</code></td><td>EMA period for H4 confirmation filter</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="config-group">
+      <div class="config-group-header">Trade Management</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>PARTIAL_TP_1R</code></td><td><code>true</code></td><td>Close 50% of position at 1R. Remaining half runs to full TP.</td></tr>
+            <tr><td><code>BREAKEVEN_SL_1R</code></td><td><code>false</code></td><td>Move SL to entry price when 1R is reached (zero-risk trade)</td></tr>
+            <tr><td><code>PARTIAL_TP_2R</code></td><td><code>true</code></td><td>Close an additional 25% of original volume at 2R level</td></tr>
+            <tr><td><code>TRAILING_2R</code></td><td><code>false</code></td><td>Move SL to 1R when 2R is hit (trailing). Parameter sweep: hurts PF, keep false.</td></tr>
+            <tr><td><code>FRIDAY_CLOSE_HOUR</code></td><td><code>21</code></td><td>Force-close open trades on Friday at or after this UTC hour. Avoids weekend gap.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3>Example .env (XAUUSDm live)</h3>
+    <pre><span class="comment"># ── Connection ──────────────────────────────────────────</span>
+<span class="key">MT5_BASE_URL</span>=<span class="val">https://mt5.example.com</span>
+<span class="key">SYMBOLS</span>=<span class="val">XAUUSDm</span>
+<span class="key">TIMEFRAME</span>=<span class="val">M15</span>
+<span class="key">CANDLE_COUNT</span>=<span class="val">200</span>
+<span class="key">CYCLE_SECS</span>=<span class="val">60</span>
+
+<span class="comment"># ── Risk ────────────────────────────────────────────────</span>
+<span class="key">RISK_PCT</span>=<span class="val">0.01</span>
+
+<span class="comment"># ── Friction (Exness Zero account) ──────────────────────</span>
+<span class="key">COMMISSION_PER_LOT</span>=<span class="val">7.0</span>
+<span class="key">SLIPPAGE_POINTS</span>=<span class="val">2</span>
+<span class="key">SPREAD_OVERRIDE</span>=<span class="val">0</span>
+
+<span class="comment"># ── ICT Signal ──────────────────────────────────────────</span>
+<span class="key">KILLZONE_WINDOWS</span>=<span class="val">08:00-13:00,15:00-18:00</span>
+<span class="key">SWING_PERIOD</span>=<span class="val">2</span>
+<span class="key">MIN_RR</span>=<span class="val">2.5</span>
+<span class="key">DOW_FILTER</span>=<span class="val">true</span>
+
+<span class="comment"># ── Trend Filter ────────────────────────────────────────</span>
+<span class="key">TREND_EMA_PERIOD</span>=<span class="val">20</span>
+<span class="key">TREND_TF</span>=<span class="val">H1</span>
+<span class="key">TREND_H4_CONFIRM</span>=<span class="val">true</span>
+<span class="key">TREND_H4_PERIOD</span>=<span class="val">20</span>
+
+<span class="comment"># ── Trade Management ────────────────────────────────────</span>
+<span class="key">PARTIAL_TP_1R</span>=<span class="val">true</span>
+<span class="key">PARTIAL_TP_2R</span>=<span class="val">true</span>
+<span class="key">BREAKEVEN_SL_1R</span>=<span class="val">false</span>
+<span class="key">TRAILING_2R</span>=<span class="val">false</span>
+<span class="key">FRIDAY_CLOSE_HOUR</span>=<span class="val">21</span></pre>
+  </div>
+</section>
+
+<!-- Results -->
+<section id="results">
+  <div class="container">
+    <h2>Backtest Results</h2>
+    <p>
+      Walk-forward backtest on 50,000 M15 candles (≈ 25 months). Starting balance $5,000.
+      Commission $7/lot, spread = 0 (Exness Zero), slippage 2 pts.
+    </p>
+
+    <h3>XAUUSDm — Best Pair (optimal config)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Trades</td><td>148</td></tr>
+          <tr><td>Win Rate</td><td>54.1%</td></tr>
+          <tr class="highlight-row"><td>Profit Factor</td><td>3.90</td></tr>
+          <tr class="highlight-row"><td>Net Return</td><td>+$10,433 (+209%)</td></tr>
+          <tr><td>Max Drawdown</td><td>-$476 (-9.5%)</td></tr>
+          <tr><td>Final Balance</td><td>$15,433</td></tr>
+          <tr><td>Total Friction</td><td>-$131</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Multi-Pair Parameter Sweep Results</h3>
+    <p>32-combination sweep across key settings. Best config per pair (1% risk, $5,000 start):</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Pair</th>
+            <th>Trades</th>
+            <th>WR</th>
+            <th>PF</th>
+            <th>Return</th>
+            <th>DD</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="highlight-row">
+            <td><code>XAUUSDm</code></td>
+            <td>148</td>
+            <td>54.1%</td>
+            <td>3.90</td>
+            <td><span class="tag tag-green">+209%</span></td>
+            <td>-$476</td>
+            <td>Best</td>
+          </tr>
+          <tr>
+            <td><code>GBPUSDm</code></td>
+            <td>72</td>
+            <td>56.9%</td>
+            <td>3.42</td>
+            <td><span class="tag tag-green">+143%</span></td>
+            <td>-$312</td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><code>NZDUSDm</code></td>
+            <td>54</td>
+            <td>53.7%</td>
+            <td>2.91</td>
+            <td><span class="tag tag-green">+87%</span></td>
+            <td>-$228</td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><code>EURUSDm</code></td>
+            <td>48</td>
+            <td>52.1%</td>
+            <td>2.67</td>
+            <td><span class="tag tag-green">+62%</span></td>
+            <td>-$185</td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><code>BTCUSDm</code></td>
+            <td>31</td>
+            <td>58.1%</td>
+            <td>2.44</td>
+            <td><span class="tag tag-green">+48%</span></td>
+            <td>-$156</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Key Findings from Parameter Sweep</h3>
+    <div class="card-grid">
+      <div class="card">
+        <h3>H4 Confirm = true</h3>
+        <p>Universally improved PF across all pairs. Eliminates counter-trend noise on lower timeframes.</p>
+      </div>
+      <div class="card">
+        <h3>TRAILING_2R = false</h3>
+        <p>Consistently hurts performance. Cutting winners short is a net negative across all tested pairs.</p>
+      </div>
+      <div class="card">
+        <h3>DOW Filter = true</h3>
+        <p>Skipping Monday/Friday entries reduced losing trades without materially reducing winners.</p>
+      </div>
+      <div class="card">
+        <h3>PARTIAL_TP_1R + 2R</h3>
+        <p>Layered partial exits significantly boost win rate and reduce maximum consecutive losses.</p>
+      </div>
+    </div>
+
+    <h3>Hermes vs Ares (XAUUSDm, risk-normalized @ 1%)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Bot</th>
+            <th>Strategy</th>
+            <th>TF</th>
+            <th>PF</th>
+            <th>WR</th>
+            <th>Return/mo @ 1%</th>
+            <th>Total Friction</th>
+            <th>DD @ 1%</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="highlight-row">
+            <td><strong>Hermes</strong></td>
+            <td>ICT OTE/FVG/OB</td>
+            <td>M15</td>
+            <td>3.90</td>
+            <td>54.1%</td>
+            <td>~8.4%</td>
+            <td>-$131</td>
+            <td>-$476</td>
+          </tr>
+          <tr>
+            <td>Ares</td>
+            <td>Momentum FVG</td>
+            <td>M5</td>
+            <td>1.93</td>
+            <td>61.9%</td>
+            <td>~10%</td>
+            <td>-$5,627</td>
+            <td>~-$524</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Hermes has a 2× higher Profit Factor and 43× less friction, making it far more robust to live execution variance.
+      Ares has marginally higher raw monthly return at equivalent risk, but is highly sensitive to spread and slippage.
+    </p>
+  </div>
+</section>
+
+<!-- Setup -->
+<section id="setup">
+  <div class="container">
+    <h2>Setup &amp; Deployment</h2>
+
+    <h3>Prerequisites</h3>
+    <div class="card-grid">
+      <div class="card">
+        <h3>Rust 1.80+</h3>
+        <p>Install via <code>rustup</code>. Required for building both binaries.</p>
+      </div>
+      <div class="card">
+        <h3>MT5 Bridge</h3>
+        <p>A running MT5 bridge server accessible at <code>MT5_BASE_URL</code>. Provides OHLC data and order execution via REST.</p>
+      </div>
+      <div class="card">
+        <h3>Exness Zero Account</h3>
+        <p>Recommended: zero-spread + $7/lot commission. Set <code>SPREAD_OVERRIDE=0</code> and <code>COMMISSION_PER_LOT=7.0</code>.</p>
+      </div>
+    </div>
+
+    <h3>Run a Backtest</h3>
+    <pre><span class="comment"># Copy and configure environment</span>
+cp .env.example .env
+<span class="comment"># edit .env with your MT5_BASE_URL and SYMBOL</span>
+
+<span class="comment"># Run backtest (fetches 50k M15 candles from MT5)</span>
+cargo run --release --bin backtest</pre>
+
+    <h3>Run Live Trading</h3>
+    <pre><span class="comment"># Set SYMBOLS (plural) for live mode</span>
+<span class="comment"># e.g. SYMBOLS=XAUUSDm in .env</span>
+
+cargo run --release --bin hermes</pre>
+
+    <h3>Build Release Binary (Linux static)</h3>
+    <pre>rustup target add x86_64-unknown-linux-musl
+sudo apt-get install musl-tools
+
+cargo build --release --bin hermes --target x86_64-unknown-linux-musl
+<span class="comment"># Output: target/x86_64-unknown-linux-musl/release/hermes</span></pre>
+
+    <h3>Deploy on VPS</h3>
+    <pre><span class="comment"># Copy binary and .env to server</span>
+scp target/x86_64-unknown-linux-musl/release/hermes user@vps:/opt/hermes/
+scp .env user@vps:/opt/hermes/
+
+<span class="comment"># Run as a systemd service or with screen/tmux</span>
+cd /opt/hermes && RUST_LOG=info ./hermes</pre>
+
+    <h3>GitHub Actions (CI/CD)</h3>
+    <p>
+      The repository includes a workflow at <code>.github/workflows/release.yml</code>.
+      Push a tag like <code>v1.2.0</code> to trigger a release with pre-built binaries for Linux (musl) and Windows.
+    </p>
+    <pre><span class="comment"># Tag and push to create a GitHub Release</span>
+git tag v1.0.0
+git push origin v1.0.0
+
+<span class="comment"># Artifacts: hermes-linux-x86_64, backtest-linux-x86_64</span>
+<span class="comment">#            hermes-windows-x86_64.exe, backtest-windows-x86_64.exe</span></pre>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <p>Hermes &mdash; ICT Algorithmic Trading System &mdash; Built with Rust</p>
+  <p style="margin-top:0.4rem;">
+    <a href="https://github.com/romysaputrasihananda/hermes">GitHub</a>
+    &nbsp;&middot;&nbsp;
+    Trading involves significant risk. Past backtest results do not guarantee future live performance.
+  </p>
+</footer>
+
+</body>
+</html>

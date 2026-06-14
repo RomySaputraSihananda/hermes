@@ -3,21 +3,6 @@
 version = 4
 
 [[package]]
-name = "agents"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "domain",
- "ict",
- "openrouter",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "ahash"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -74,14 +59,12 @@ checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 name = "backtest"
 version = "0.1.0"
 dependencies = [
- "agents",
  "anyhow",
  "chrono",
  "domain",
  "dotenvy",
  "ict",
  "mt5-client",
- "openrouter",
  "risk",
  "rust_decimal",
  "tokio",
@@ -255,11 +238,9 @@ checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
 name = "engine"
 version = "0.1.0"
 dependencies = [
- "agents",
  "domain",
  "ict",
  "mt5-client",
- "openrouter",
  "risk",
  "rust_decimal",
  "thiserror",
@@ -384,12 +365,14 @@ name = "hermes"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "domain",
  "dotenvy",
  "engine",
  "mt5-client",
- "openrouter",
+ "reqwest",
  "rust_decimal",
+ "telegram",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -764,18 +747,6 @@ name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
-
-[[package]]
-name = "openrouter"
-version = "0.1.0"
-dependencies = [
- "reqwest",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tracing",
-]
 
 [[package]]
 name = "parking_lot"
@@ -1401,6 +1372,17 @@ name = "tap"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
+
+[[package]]
+name = "telegram"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tracing",
+]
 
 [[package]]
 name = "thiserror"

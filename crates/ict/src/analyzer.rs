@@ -52,7 +52,7 @@ impl<'a> IctAnalyzer<'a> {
         let bias         = structure.last().map(|s| s.side);
         let pd_array     = compute_pd(self.candles, &swings, bias);
         let ote          = bias.and_then(|b| compute_ote(&swings, b));
-        let signal       = check_confluence(
+        let signal = check_confluence(
             self.candles,
             &fvgs,
             &order_blocks,
@@ -61,7 +61,9 @@ impl<'a> IctAnalyzer<'a> {
             &pd_array,
             &ote,
             &swings,
-        );
+        )
+        .or_else(|| check_fvg_entry(self.candles, &fvgs, &structure, &pd_array, &swings))
+        .or_else(|| check_ob_entry(self.candles, &order_blocks, &structure, &pd_array, &swings));
 
         let signal = signal.filter(|s| {
             self.min_sl_distance == Decimal::ZERO
@@ -164,17 +166,12 @@ fn check_confluence(
             .min()?,
     };
 
-    // Condition 5: liquidity sweep in the CORRECT DIRECTION must have occurred in the last 5
-    // candles. Long needs a bullish sweep (stops below a swing low taken out), Short needs a
-    // bearish sweep (stops above a swing high taken out).
+    // Sweep present: used as a confluence flag but no longer required to enter.
     let last_5_start = candles.len().saturating_sub(5);
     let cutoff_time  = candles[last_5_start].time;
     let sweep_present = sweeps
         .iter()
         .any(|s| s.swept_at >= cutoff_time && s.side == bias);
-    if !sweep_present {
-        return None;
-    }
 
     let confluence = ConfluenceFlags {
         has_bos_choch: true,
@@ -190,6 +187,99 @@ fn check_confluence(
         sl,
         tp,
         confluence,
+    })
+}
+
+fn build_sl_tp(
+    bias: Side,
+    entry: Decimal,
+    pd_array: &Option<PdArray>,
+    swings: &[SwingPoint],
+) -> Option<(Decimal, Decimal)> {
+    let sl = match (pd_array, bias) {
+        (Some(pd), Side::Long)  => pd.range_low,
+        (Some(pd), Side::Short) => pd.range_high,
+        (None, Side::Long)  => swings.iter().filter(|s| s.kind == SwingKind::Low).map(|s| s.price).min()?,
+        (None, Side::Short) => swings.iter().filter(|s| s.kind == SwingKind::High).map(|s| s.price).max()?,
+    };
+    let valid_sl = match bias { Side::Long => sl < entry, Side::Short => sl > entry };
+    if !valid_sl { return None; }
+
+    let tp = match bias {
+        Side::Long  => swings.iter().filter(|s| s.kind == SwingKind::High).map(|s| s.price).max()?,
+        Side::Short => swings.iter().filter(|s| s.kind == SwingKind::Low).map(|s| s.price).min()?,
+    };
+    let valid_tp = match bias { Side::Long => tp > entry, Side::Short => tp < entry };
+    if !valid_tp { return None; }
+
+    Some((sl, tp))
+}
+
+fn check_fvg_entry(
+    candles: &[Candle],
+    fvgs: &[Fvg],
+    structure: &[BosChoch],
+    pd_array: &Option<PdArray>,
+    swings: &[SwingPoint],
+) -> Option<TradeSignal> {
+    let bias = structure.last()?.side;
+    let last_close = candles.last()?.close;
+    let two = Decimal::from(2u32);
+
+    let fvg = fvgs.iter().rfind(|f| {
+        !f.mitigated && f.side == bias
+            && last_close >= f.bottom && last_close <= f.top
+    })?;
+
+    let entry = (fvg.top + fvg.bottom) / two;
+    let (sl, tp) = build_sl_tp(bias, entry, pd_array, swings)?;
+
+    Some(TradeSignal {
+        side: bias,
+        entry,
+        sl,
+        tp,
+        confluence: ConfluenceFlags {
+            has_bos_choch: true,
+            in_pd_zone:    false,
+            ob_in_ote:     false,
+            fvg_in_ote:    true,
+            sweep_present: false,
+        },
+    })
+}
+
+fn check_ob_entry(
+    candles: &[Candle],
+    order_blocks: &[OrderBlock],
+    structure: &[BosChoch],
+    pd_array: &Option<PdArray>,
+    swings: &[SwingPoint],
+) -> Option<TradeSignal> {
+    let bias = structure.last()?.side;
+    let last_close = candles.last()?.close;
+    let two = Decimal::from(2u32);
+
+    let ob = order_blocks.iter().rfind(|o| {
+        !o.mitigated && o.side == bias
+            && last_close >= o.bottom && last_close <= o.top
+    })?;
+
+    let entry = (ob.top + ob.bottom) / two;
+    let (sl, tp) = build_sl_tp(bias, entry, pd_array, swings)?;
+
+    Some(TradeSignal {
+        side: bias,
+        entry,
+        sl,
+        tp,
+        confluence: ConfluenceFlags {
+            has_bos_choch: true,
+            in_pd_zone:    false,
+            ob_in_ote:     true,
+            fvg_in_ote:    false,
+            sweep_present: false,
+        },
     })
 }
 

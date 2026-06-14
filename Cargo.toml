@@ -3,10 +3,9 @@ members = [
     "crates/domain",
     "crates/mt5-client",
     "crates/ict",
-    "crates/openrouter",
-    "crates/agents",
     "crates/risk",
     "crates/engine",
+    "crates/telegram",
     "bin/hermes",
     "bin/backtest",
 ]
@@ -17,10 +16,9 @@ resolver = "2"
 domain     = { path = "crates/domain" }
 mt5-client = { path = "crates/mt5-client" }
 ict        = { path = "crates/ict" }
-openrouter = { path = "crates/openrouter" }
-agents     = { path = "crates/agents" }
 risk       = { path = "crates/risk" }
 engine     = { path = "crates/engine" }
+telegram   = { path = "crates/telegram" }
 
 # --- external ---
 anyhow             = "1"

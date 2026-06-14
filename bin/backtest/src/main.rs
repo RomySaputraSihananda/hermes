@@ -1,5 +1,5 @@
 use anyhow::Context;
-use chrono::{DateTime, NaiveDate, Timelike, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, Timelike, Utc};
 use domain::Candle;
 use domain::Side;
 use ict::IctAnalyzer;
@@ -14,6 +14,7 @@ struct SimTrade {
     remaining_volume: Decimal,    // halved after partial TP at 1:1
     partial_pnl:      Decimal,    // P&L banked from partial closes; added to balance at final close
     half_closed:      bool,       // true once 1:1 partial close and/or SL move has fired
+    two_r_hit:        bool,       // true once price reached 2R (trailing SL + optional 2R partial)
     open_candle_idx:  usize,      // walk-forward index at open; used by TIMEOUT_CANDLES
 }
 
@@ -184,17 +185,6 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let mt5_base_url = std::env::var("MT5_BASE_URL").context("MT5_BASE_URL missing")?;
-    let use_llm      = std::env::var("USE_LLM")
-        .unwrap_or_else(|_| "true".to_string())
-        .trim()
-        .to_lowercase()
-        != "false";
-    let llm_model = if use_llm {
-        std::env::var("OPENROUTER_API_KEY").context("OPENROUTER_API_KEY missing (set USE_LLM=false to skip)")?;
-        std::env::var("LLM_MODEL").context("LLM_MODEL missing")?
-    } else {
-        String::new()
-    };
     let symbol           = std::env::var("SYMBOL").context("SYMBOL missing")?;
     let timeframe_str    = std::env::var("TIMEFRAME").context("TIMEFRAME missing")?;
     let window_size      = std::env::var("CANDLE_COUNT")
@@ -306,6 +296,41 @@ async fn main() -> anyhow::Result<()> {
         .trim()
         .to_uppercase() == "H1";
 
+    // H4 confirmation: require H4 EMA to agree with H1 EMA direction.
+    let trend_h4_confirm = std::env::var("TREND_H4_CONFIRM")
+        .unwrap_or_default().trim().to_lowercase() == "true";
+    let trend_h4_period: usize = std::env::var("TREND_H4_PERIOD")
+        .unwrap_or_else(|_| "20".to_string())
+        .parse::<usize>()
+        .context("TREND_H4_PERIOD must be a positive integer")?;
+
+    // Day-of-week filter: skip Monday (1) and Friday (5).
+    let dow_filter = std::env::var("DOW_FILTER")
+        .unwrap_or_default().trim().to_lowercase() == "true";
+
+    // Trailing stop: after price hits 2R, move SL to 1R level (locks in 1R profit).
+    let trailing_2r = std::env::var("TRAILING_2R")
+        .unwrap_or_default().trim().to_lowercase() == "true";
+
+    // Second partial TP: close 25% of original volume when price reaches 2R.
+    let partial_tp_2r = std::env::var("PARTIAL_TP_2R")
+        .unwrap_or_default().trim().to_lowercase() == "true";
+
+    // Friday session close: force-close any open trade on Friday at or after this hour.
+    let friday_close_hour: Option<u32> = match std::env::var("FRIDAY_CLOSE_HOUR") {
+        Ok(s) => Some(s.parse::<u32>().context("FRIDAY_CLOSE_HOUR must be 0-23")?),
+        Err(_) => None,
+    };
+
+    // Minimum ATR(14) in price units. Skip entry if market is too quiet.
+    let atr_min_price: Option<Decimal> = match std::env::var("ATR_MIN_PRICE") {
+        Ok(s) => {
+            let v = s.parse::<Decimal>().context("ATR_MIN_PRICE must be a decimal")?;
+            if v > Decimal::ZERO { Some(v) } else { None }
+        }
+        Err(_) => None,
+    };
+
     // Optional date range filter: YYYY-MM-DD.  Applied to new_candle.time.
     let date_from: Option<NaiveDate> = match std::env::var("DATE_FROM") {
         Ok(s) => Some(s.parse::<NaiveDate>().context("DATE_FROM must be YYYY-MM-DD")?),
@@ -322,7 +347,6 @@ async fn main() -> anyhow::Result<()> {
     let tf_short = timeframe_str.as_str();
 
     let mt5 = mt5_client::Mt5Client::new(mt5_base_url);
-    let llm = openrouter::OpenRouterClient::new();
 
     tracing::info!(symbol = %symbol, timeframe = ?timeframe, backtest_candles, "fetching historical data");
 
@@ -347,6 +371,17 @@ async fn main() -> anyhow::Result<()> {
             let emas = rolling_ema(&closes, trend_ema_period);
             (h4, emas)
         }
+    } else {
+        (vec![], vec![])
+    };
+
+    // H4 confirmation filter: fetch H4 EMA independently of the H1 trend filter.
+    let (h4c_candles, h4c_emas): (Vec<domain::Candle>, Vec<Option<Decimal>>) = if trend_h4_confirm {
+        tracing::info!(ema_period = trend_h4_period, "fetching H4 candles for H4 confirmation");
+        let h4 = mt5.rates_from_pos(&symbol, domain::Timeframe::H4, 0, backtest_candles / 4 + 200).await?;
+        let closes: Vec<Decimal> = h4.iter().map(|c| c.close).collect();
+        let emas = rolling_ema(&closes, trend_h4_period);
+        (h4, emas)
     } else {
         (vec![], vec![])
     };
@@ -410,6 +445,52 @@ async fn main() -> anyhow::Result<()> {
 
         // --- check open trade (always runs — SL/TP management is not date-filtered) ---
         if open_trade.is_some() {
+            // 0. Friday session close: force-exit before weekend gap.
+            if let Some(close_hour) = friday_close_hour {
+                if open_trade.is_some()
+                    && new_candle.time.weekday().number_from_monday() == 5
+                    && new_candle.time.hour() >= close_hour
+                {
+                    let trade = open_trade.take().unwrap();
+                    let exit_level = new_candle.close;
+                    let exit = actual_exit_price(trade.signal.side, exit_level, false, spread_price, slippage_price);
+                    let commission = commission_per_lot * trade.remaining_volume;
+                    let profit_rate = if profit_is_usd || exit <= Decimal::ZERO { Decimal::ONE } else { Decimal::ONE / exit };
+                    let fl_rate = if profit_is_usd || exit_level <= Decimal::ZERO { Decimal::ONE } else { Decimal::ONE / exit_level };
+                    let final_pnl = (match trade.signal.side {
+                        Side::Long  => (exit - trade.actual_entry) * trade.remaining_volume * contract_size,
+                        Side::Short => (trade.actual_entry - exit) * trade.remaining_volume * contract_size,
+                    }) * profit_rate - commission;
+                    let frictionless_pnl = (match trade.signal.side {
+                        Side::Long  => (exit_level - trade.signal.entry) * trade.remaining_volume * contract_size,
+                        Side::Short => (trade.signal.entry - exit_level) * trade.remaining_volume * contract_size,
+                    }) * fl_rate;
+                    let friction = frictionless_pnl - final_pnl;
+                    let pnl = trade.partial_pnl + final_pnl;
+                    balance += pnl;
+                    if balance > peak { peak = balance; }
+                    let dd = balance - peak;
+                    if dd < max_drawdown { max_drawdown = dd; }
+                    timeouts       += 1;
+                    trades         += 1;
+                    total_pnl      += pnl;
+                    total_friction += friction;
+                    account_sim = make_sim_account(balance);
+                    println!(
+                        "[{} {}] {} {} entry={} tp={} sl={} vol={:.2} → FRI_CLS exit={} friction={} pnl={} bal={:.2}",
+                        trade.open_time_str, tf_short, symbol,
+                        if trade.signal.side == Side::Long { "LONG " } else { "SHORT" },
+                        fmt_price(trade.actual_entry, prec),
+                        fmt_price(trade.signal.tp, prec),
+                        fmt_price(trade.signal.sl, prec),
+                        trade.volume,
+                        fmt_price(exit, prec),
+                        fmt_pnl(-friction),
+                        fmt_pnl(pnl), balance,
+                    );
+                }
+            }
+
             // 1. Time-based candle timeout: close stale trade at market price.
             if timeout_candles > 0 {
                 if let Some(t) = open_trade.as_ref() {
@@ -499,7 +580,63 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
 
-            // 3. SL/TP check — uses current_sl which may have been moved to breakeven.
+            // 3. 2R events: trailing SL to 1R and/or second partial TP (fires once per trade).
+            if trailing_2r || partial_tp_2r {
+                if let Some(t) = open_trade.as_ref() {
+                    if !t.two_r_hit {
+                        let one_r_dist  = (t.signal.entry - t.signal.sl).abs();
+                        let two_r_level = match t.signal.side {
+                            Side::Long  => t.signal.entry + one_r_dist * Decimal::from(2u32),
+                            Side::Short => t.signal.entry - one_r_dist * Decimal::from(2u32),
+                        };
+                        let two_r_reached = match t.signal.side {
+                            Side::Long  => new_candle.high >= two_r_level,
+                            Side::Short => new_candle.low  <= two_r_level,
+                        };
+                        if two_r_reached {
+                            let t = open_trade.as_mut().unwrap();
+                            if partial_tp_2r {
+                                let partial_vol = (t.volume / Decimal::from(4u32) / risk_cfg_base.volume_step).floor()
+                                    * risk_cfg_base.volume_step;
+                                if partial_vol >= risk_cfg_base.min_volume && t.remaining_volume > partial_vol {
+                                    let exit = actual_exit_price(t.signal.side, two_r_level, false, spread_price, slippage_price);
+                                    let pr = if profit_is_usd || exit <= Decimal::ZERO { Decimal::ONE } else { Decimal::ONE / exit };
+                                    let pp = (match t.signal.side {
+                                        Side::Long  => (exit - t.actual_entry) * partial_vol * contract_size,
+                                        Side::Short => (t.actual_entry - exit) * partial_vol * contract_size,
+                                    }) * pr - commission_per_lot * partial_vol;
+                                    t.partial_pnl      += pp;
+                                    t.remaining_volume -= partial_vol;
+                                    println!(
+                                        "[{} {}] {} {} entry={} → PARTIAL2R exit={} vol={:.2} pnl={} (rem={:.2})",
+                                        t.open_time_str, tf_short, symbol,
+                                        if t.signal.side == Side::Long { "LONG " } else { "SHORT" },
+                                        fmt_price(t.actual_entry, prec),
+                                        fmt_price(exit, prec),
+                                        partial_vol,
+                                        fmt_pnl(pp),
+                                        t.remaining_volume,
+                                    );
+                                }
+                            }
+                            if trailing_2r {
+                                let one_r_level = match t.signal.side {
+                                    Side::Long  => t.signal.entry + one_r_dist,
+                                    Side::Short => t.signal.entry - one_r_dist,
+                                };
+                                let improves = match t.signal.side {
+                                    Side::Long  => one_r_level > t.current_sl,
+                                    Side::Short => one_r_level < t.current_sl,
+                                };
+                                if improves { t.current_sl = one_r_level; }
+                            }
+                            t.two_r_hit = true;
+                        }
+                    }
+                }
+            }
+
+            // 4. SL/TP check — uses current_sl which may have been moved to breakeven.
             if let Some(t) = open_trade.as_ref() {
                 let (sl_hit, tp_hit) = match t.signal.side {
                     Side::Long  => (
@@ -595,12 +732,24 @@ async fn main() -> anyhow::Result<()> {
             continue;
         }
 
+        // Day-of-week filter: skip Monday (1) and Friday (5).
+        if dow_filter {
+            let wd = new_candle.time.weekday().number_from_monday();
+            if wd == 1 || wd == 5 { continue; }
+        }
+
         let window = &candles[i..new_idx];
 
         // ATR-based minimum SL: compute dynamically from window, or fall back to fixed.
+        let current_atr = compute_atr(window, 14);
         let effective_min_sl = atr_sl_mult
-            .map(|m| compute_atr(window, 14) * m)
+            .map(|m| current_atr * m)
             .unwrap_or(min_sl_distance);
+
+        // ATR minimum volatility: skip if market is too quiet.
+        if let Some(min_atr) = atr_min_price {
+            if current_atr < min_atr { continue; }
+        }
 
         let analysis = IctAnalyzer::new(window, effective_min_sl).with_swing_period(swing_period).analyze();
         let signal   = match analysis.signal.as_ref() {
@@ -631,33 +780,26 @@ async fn main() -> anyhow::Result<()> {
             }
         }
 
+        // H4 confirmation: both primary EMA (H1) and H4 EMA must agree with signal direction.
+        if trend_h4_confirm && !h4c_candles.is_empty() {
+            let idx = h4c_candles.partition_point(|c| c.time <= new_candle.time);
+            if idx == 0 { continue; }
+            let hi = idx - 1;
+            if let Some(ema) = h4c_emas.get(hi).copied().flatten() {
+                let h4_up = h4c_candles[hi].close > ema;
+                match signal.side {
+                    Side::Long  if !h4_up => continue,
+                    Side::Short if  h4_up => continue,
+                    _ => {}
+                }
+            }
+        }
+
         // Minimum R:R filter.
         if min_rr > Decimal::ZERO {
             let reward = (signal.tp - signal.entry).abs();
             let risk   = (signal.entry - signal.sl).abs();
             if risk == Decimal::ZERO || reward / risk < min_rr {
-                continue;
-            }
-        }
-
-        let technical_in   = agents::TechnicalInput   { symbol: &symbol, candles: window, analysis: &analysis };
-        let sentiment_in   = agents::SentimentInput   { symbol: &symbol, candles: window };
-        let fundamental_in = agents::FundamentalInput { symbol: &symbol, news_context: "" };
-        let risk_in        = agents::RiskInput        { account: &account_sim, positions: &[], signal: Some(&signal) };
-
-        if use_llm {
-            let ict_action = match signal.side {
-                domain::Side::Long  => agents::Action::Buy,
-                domain::Side::Short => agents::Action::Sell,
-            };
-            let decision = match agents::run_agents(&llm, &llm_model, technical_in, sentiment_in, fundamental_in, risk_in).await {
-                Ok(d)  => d,
-                Err(e) => {
-                    tracing::warn!(error = %e, "agents unavailable after retry, falling back to ICT signal");
-                    agents::AgentDecision::passthrough(ict_action)
-                }
-            };
-            if decision.action == agents::Action::Hold {
                 continue;
             }
         }
@@ -709,6 +851,7 @@ async fn main() -> anyhow::Result<()> {
             remaining_volume: initial_vol,
             partial_pnl:      Decimal::ZERO,
             half_closed:      false,
+            two_r_hit:        false,
             open_candle_idx:  new_idx,
         });
     }

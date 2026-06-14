@@ -1,0 +1,98 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [master]
+    tags:     ["v*.*.*"]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    name: Build — ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name:    Linux x86_64 (static)
+            os:      ubuntu-latest
+            target:  x86_64-unknown-linux-musl
+            ext:     ""
+            asset_hermes:   hermes-linux-x86_64
+            asset_backtest: backtest-linux-x86_64
+
+          - name:    Windows x86_64
+            os:      windows-latest
+            target:  x86_64-pc-windows-msvc
+            ext:     ".exe"
+            asset_hermes:   hermes-windows-x86_64.exe
+            asset_backtest: backtest-windows-x86_64.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install musl-tools (Linux only)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get install -y musl-tools
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Build hermes
+        run: cargo build --release --bin hermes --target ${{ matrix.target }}
+
+      - name: Build backtest
+        run: cargo build --release --bin backtest --target ${{ matrix.target }}
+
+      - name: Rename binaries
+        shell: bash
+        run: |
+          cp target/${{ matrix.target }}/release/hermes${{ matrix.ext }} ${{ matrix.asset_hermes }}
+          cp target/${{ matrix.target }}/release/backtest${{ matrix.ext }} ${{ matrix.asset_backtest }}
+
+      - name: Upload hermes artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_hermes }}
+          path: ${{ matrix.asset_hermes }}
+          retention-days: 7
+
+      - name: Upload backtest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_backtest }}
+          path: ${{ matrix.asset_backtest }}
+          retention-days: 7
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true

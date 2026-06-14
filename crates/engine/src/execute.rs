@@ -15,7 +15,7 @@ pub(crate) fn build_trade_request(
         price:      signal.entry.to_string().parse::<f64>().unwrap_or(0.0),
         sl:         Some(signal.sl.to_string().parse::<f64>().unwrap_or(0.0)),
         tp:         Some(signal.tp.to_string().parse::<f64>().unwrap_or(0.0)),
-        magic:      None,
+        magic:      Some(19731),
         comment:    None,
     }
 }
@@ -47,7 +47,7 @@ mod tests {
         assert!((req.volume  - 0.10_f64 ).abs() < 1e-6);
         assert!(req.sl.is_some());
         assert!(req.tp.is_some());
-        assert!(req.magic.is_none());
+        assert_eq!(req.magic, Some(19731));
         assert!(req.comment.is_none());
     }
 
