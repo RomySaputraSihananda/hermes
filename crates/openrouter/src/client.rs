@@ -70,7 +70,14 @@ fn parse_response<T: serde::de::DeserializeOwned>(
     if response.choices.is_empty() {
         return Err(OpenRouterError::EmptyChoices);
     }
-    Ok(serde_json::from_str(&response.choices[0].message.content)?)
+    let raw = &response.choices[0].message.content;
+    // Strip ASCII control characters (U+0000–U+001F) that some LLMs insert
+    // into JSON string values, keeping tab/newline/CR which are valid whitespace.
+    let sanitized: String = raw
+        .chars()
+        .filter(|&c| c >= ' ' || c == '\t' || c == '\n' || c == '\r')
+        .collect();
+    Ok(serde_json::from_str(&sanitized)?)
 }
 
 #[cfg(test)]

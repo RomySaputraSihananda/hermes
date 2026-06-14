@@ -4,6 +4,7 @@ use domain::Candle;
 use ict::IctAnalysis;
 use openrouter::{Message, OpenRouterClient, Role};
 
+#[derive(Copy, Clone)]
 pub struct TechnicalInput<'a> {
     pub symbol: &'a str,
     pub candles: &'a [Candle],

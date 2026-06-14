@@ -2,6 +2,7 @@ use crate::error::AgentsError;
 use crate::types::{AgentVote, agent_vote_schema};
 use openrouter::{Message, OpenRouterClient, Role};
 
+#[derive(Copy, Clone)]
 pub struct FundamentalInput<'a> {
     pub symbol: &'a str,
     pub news_context: &'a str,

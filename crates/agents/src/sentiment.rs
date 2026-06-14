@@ -3,6 +3,7 @@ use crate::types::{AgentVote, agent_vote_schema};
 use domain::Candle;
 use openrouter::{Message, OpenRouterClient, Role};
 
+#[derive(Copy, Clone)]
 pub struct SentimentInput<'a> {
     pub symbol: &'a str,
     pub candles: &'a [Candle],

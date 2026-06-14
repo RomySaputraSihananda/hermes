@@ -4,6 +4,7 @@ use domain::{AccountInfo, Position};
 use ict::TradeSignal;
 use openrouter::{Message, OpenRouterClient, Role};
 
+#[derive(Copy, Clone)]
 pub struct RiskInput<'a> {
     pub account: &'a AccountInfo,
     pub positions: &'a [Position],

@@ -58,6 +58,21 @@ pub struct AgentDecision {
     pub from_quorum: bool,
 }
 
+impl AgentDecision {
+    /// Synthetic "proceed" decision used when agents are unavailable.
+    /// The ICT signal direction is trusted and the trade is allowed through.
+    pub fn passthrough(action: Action) -> Self {
+        let vote = AgentVote { action: action.clone(), confidence: 0.5, reasoning: "fallback".to_string() };
+        Self {
+            action,
+            confidence: 0.5,
+            reasoning: "agents unavailable — ICT signal passthrough".to_string(),
+            votes: [vote.clone(), vote.clone(), vote.clone(), vote.clone()],
+            from_quorum: false,
+        }
+    }
+}
+
 pub(crate) fn agent_vote_schema() -> serde_json::Value {
     serde_json::json!({
         "type": "object",

@@ -646,9 +646,16 @@ async fn main() -> anyhow::Result<()> {
         let risk_in        = agents::RiskInput        { account: &account_sim, positions: &[], signal: Some(&signal) };
 
         if use_llm {
+            let ict_action = match signal.side {
+                domain::Side::Long  => agents::Action::Buy,
+                domain::Side::Short => agents::Action::Sell,
+            };
             let decision = match agents::run_agents(&llm, &llm_model, technical_in, sentiment_in, fundamental_in, risk_in).await {
                 Ok(d)  => d,
-                Err(e) => { tracing::warn!(error = %e, "agents call failed, skipping signal"); continue; }
+                Err(e) => {
+                    tracing::warn!(error = %e, "agents unavailable after retry, falling back to ICT signal");
+                    agents::AgentDecision::passthrough(ict_action)
+                }
             };
             if decision.action == agents::Action::Hold {
                 continue;

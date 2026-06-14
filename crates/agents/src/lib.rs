@@ -21,11 +21,20 @@ pub async fn run_agents(
     fundamental_in: FundamentalInput<'_>,
     risk_in: RiskInput<'_>,
 ) -> Result<AgentDecision, AgentsError> {
-    let (t, s, f, r) = tokio::try_join!(
-        technical::analyze(client, model, technical_in),
-        sentiment::analyze(client, model, sentiment_in),
-        fundamental::analyze(client, model, fundamental_in),
-        risk::analyze(client, model, risk_in),
-    )?;
-    orchestrator::run(client, model, [t, s, f, r]).await
+    // Retry once on transient failures (parse errors, network hiccups).
+    for attempt in 0..2u8 {
+        match tokio::try_join!(
+            technical::analyze(client, model, technical_in),
+            sentiment::analyze(client, model, sentiment_in),
+            fundamental::analyze(client, model, fundamental_in),
+            risk::analyze(client, model, risk_in),
+        ) {
+            Ok((t, s, f, r)) => return orchestrator::run(client, model, [t, s, f, r]).await,
+            Err(e) if attempt == 0 => {
+                tracing::warn!(error = %e, "agents attempt 1 failed, retrying");
+            }
+            Err(e) => return Err(e),
+        }
+    }
+    unreachable!()
 }

@@ -103,7 +103,17 @@ pub async fn run_once(
         let fundamental_in = agents::FundamentalInput { symbol: sym, news_context: "" };
         let risk_in        = agents::RiskInput        { account: &account, positions: &positions, signal: Some(&signal) };
 
-        let decision = agents::run_agents(llm, model, technical_in, sentiment_in, fundamental_in, risk_in).await?;
+        let ict_action = match signal.side {
+            domain::Side::Long  => agents::Action::Buy,
+            domain::Side::Short => agents::Action::Sell,
+        };
+        let decision = match agents::run_agents(llm, model, technical_in, sentiment_in, fundamental_in, risk_in).await {
+            Ok(d)  => d,
+            Err(e) => {
+                tracing::warn!(error = %e, "agents unavailable after retry, falling back to ICT signal");
+                agents::AgentDecision::passthrough(ict_action)
+            }
+        };
 
         if decision.action == agents::Action::Hold {
             continue;
