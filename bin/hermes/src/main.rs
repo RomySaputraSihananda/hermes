@@ -152,12 +152,13 @@ async fn main() -> anyhow::Result<()> {
             Ok(EngineOutcome::NoSignal)   => tracing::debug!("no ICT signal on any symbol"),
             Ok(EngineOutcome::NoApproval) => tracing::debug!("risk rejected all candidates"),
             Err(e) => {
-                let msg = e.to_string();
-                tracing::error!(error = %msg, "cycle error, continuing");
-                let market_closed = msg.contains("10018") || msg.to_lowercase().contains("market closed");
-                if !market_closed {
+                let market_closed = matches!(&e, engine::EngineError::OrderRejected { retcode: 10018, .. });
+                if market_closed {
+                    tracing::debug!(error = %e, "market closed, skipping");
+                } else {
+                    tracing::error!(error = %e, "cycle error, continuing");
                     if let Some(tg) = &tg {
-                        let text = format!("⚠️ <b>HERMES error</b>\n<code>{msg}</code>");
+                        let text = format!("⚠️ <b>HERMES error</b>\n<code>{e}</code>");
                         let _ = tg.send(&http, &text).await;
                     }
                 }
